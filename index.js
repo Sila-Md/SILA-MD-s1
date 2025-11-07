@@ -76,7 +76,7 @@ const bios = [
 ];
 
 const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN
+    auth: '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'
 });
 const owner = 'Sila-Md';
 const repo = 'SILA-MD-s1';
