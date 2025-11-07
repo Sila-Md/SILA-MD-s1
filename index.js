@@ -78,8 +78,8 @@ const bios = [
 const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN
 });
-const owner = Sila-Md;
-const repo = SILA-MD-s1;
+const owner = 'Sila-Md';
+const repo = 'SILA-MD-s1';
 
 const activeSockets = new Map();
 const socketCreationTime = new Map();
