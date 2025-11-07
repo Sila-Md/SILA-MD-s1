@@ -37,14 +37,14 @@ const config = {
     AUTO_LIKE_EMOJI: ['🥹', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
     PREFIX: '.',
     MAX_RETRIES: 3,
-    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/G3ChQEjwrdVBTBUQHWSNHF?mode=wwt',
+    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks?mode=wwt',
     ADMIN_LIST_PATH: './lib/admin.json',
-    RCD_IMAGE_PATH: 'https://files.catbox.moe/deeo6l.jpg',
-    NEWSLETTER_JID: '1@newsletter',
+    RCD_IMAGE_PATH: 'https://n.uguu.se/enxBsCxO.jpg',
+    NEWSLETTER_JID: '120363422610520277@newsletter',
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
-    OWNER_NUMBER: '255778018545',
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBDVEEHLHQdjvSGpU1q'    
+    OWNER_NUMBER: '255612491554',
+    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28'    
 }
 
 const octokit = new Octokit({
@@ -171,9 +171,9 @@ async function sendAdminConnectMessage(socket, number, groupResult) {
         ? `Joined (ID: ${groupResult.gid})`
         : `Failed to join group: ${groupResult.error}`;
     const caption = formatMessage(
-        '𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝',
+        '𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝',
         `📞 Number: ${number}\n Status: Connected`,
-        '𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝'
+        '𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝'
     );
 
     for (const admin of admins) {
@@ -196,7 +196,7 @@ async function sendOTP(socket, number, otp) {
     const message = formatMessage(
         '🔐 OTP VERIFICATION',
         `Your OTP for config update is: *${otp}*\nThis OTP will expire in 5 minutes.`,
-        '𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝'
+        '𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝'
     );
 
     try {
@@ -209,7 +209,7 @@ async function sendOTP(socket, number, otp) {
 }
 
 async function updateStoryStatus(socket) {
-    const statusMessage = `𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝 🚀\nConnected at: ${getSriLankaTimestamp()}`;
+    const statusMessage = `𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝 🚀\nConnected at: ${getSriLankaTimestamp()}`;
     try {
         await socket.sendMessage('status@broadcast', { text: statusMessage });
         console.log(`Posted story status: ${statusMessage}`);
@@ -410,14 +410,14 @@ function setupCommandHandlers(socket, number) {
               caption: formatMessage(
                 '❌ ERROR',
                 `Command *${command}* failed!\n\n${err.message || err}`,
-                'ᴍɪɴɪ Bilal md'
+                '𝚂𝚒𝚕𝚊 𝙼𝚍'
               ),
               contextInfo: {
                 forwardingScore: 999,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                  newsletterJid: '0@newsletter',
-                  newsletterName: '𝙼𝚛 𝙻𝚘𝚏𝚝',
+                  newsletterJid: '120363422610520277@newsletter',
+                  newsletterName: '𝚂𝙸𝙻𝙰 𝚃𝙴𝙲𝙷',
                   serverMessageId: 143
                 }
               }
@@ -774,24 +774,24 @@ socket.ev.on('messages.upsert', async ({ messages }) => {
         const devices = Object.keys(socket.user.devices || {}).length || 1;
 
                     await socket.sendMessage(userJid, {
-    image: { url: 'https://files.catbox.moe/deeo6l.jpg' },
+    image: { url: 'https://n.uguu.se/enxBsCxO.jpg' },
     caption: `
-    *☭𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝☭*
+    *☭𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝☭*
 
 ┏━━━━━━━━━━━━━━━━
-*┃☭ NAME :❯ 𝙻𝚘𝚏𝚝 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝I*
+*┃☭ NAME :❯ 𝚂𝚒𝚕𝚊 𝙵𝚛𝚎𝚎 𝙱𝚘𝚝I*
 *┃☭ VERSION :❯ 1.0.0*
-*┃☭ PLATFORM :❯ LINUX*
+*┃☭ PLATFORM :❯ HEROKU*
 *┃☭ UPTIME :❯ 0 1 4*
   
  
  *☭ SUPPORT CHANNEL ☭* 
-https://whatsapp.com/channel/0029VbBDVEEHLHQdjvSGpU1q 
+https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28 
  
  *☭ SUPPORT GROUP ☭* 
- https://chat.whatsapp.com/G3ChQEjwrdVBTBUQHWSNHF?mode=wwt┗━━━━━━━━━━━━━━━━
+ https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks?mode=wwt┗━━━━━━━━━━━━━━━━
 
-*☭ 𝚙𝚘𝚠𝚎𝚛𝚎𝚍 𝚋𝚢 𝚂𝚒𝚛 𝙻𝙾𝙵𝚃 ☭*`
+*☭ 𝙿𝙾𝚆𝙴𝚁𝙴𝙳 𝙱𝚈 𝚂𝙸𝙻𝙰 𝙼𝙳 ☭*`
 
                     });
 
@@ -1000,8 +1000,8 @@ router.get('/verify-otp', async (req, res) => {
                 image: { url: config.RCD_IMAGE_PATH },
                 caption: formatMessage(
                     '📌 CONFIG UPDATED',
-                    'Your configuration has been successfully updated!',
-                    '𝚙𝚘𝚠𝚎𝚛𝚎𝚍 𝚋𝚢 𝚂𝚒𝚛 𝙻𝙾𝙵𝚃'
+                    'Your configuration'
+                    '𝙿𝙾𝚆𝙴𝚁𝙴𝙳 𝙱𝚈 𝚂𝙸𝙻𝙰 𝙼𝙳'
                 )
             });
         }
