@@ -28,51 +28,67 @@ const {
 } = require('@whiskeysockets/baileys');
 
 const config = {
-   WELCOME: 'true',
+    WELCOME: 'true',
     AUTO_VIEW_STATUS: 'true',
     AUTO_VOICE: 'true',
     AUTO_LIKE_STATUS: 'true',
-    AUTO_RECORDING: 'false',
+    AUTO_RECORDING: 'true',
+    AUTO_TYPING: 'true',
     HEROKU_APP_URL: '',
     AUTO_LIKE_EMOJI: ['🥹', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
     PREFIX: '.',
-    MAX_RETRIES: 3,
+    MAX_RETRIES: 5,
     GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks?mode=wwt',
     ADMIN_LIST_PATH: './lib/admin.json',
-    RCD_IMAGE_PATH: 'https://n.uguu.se/enxBsCxO.jpg',
+    RCD_IMAGE_PATH: 'https://files.catbox.moe/jwmx1j.jpg',
     NEWSLETTER_JID: '120363422610520277@newsletter',
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
     OWNER_NUMBER: '255612491554',
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28'    
+    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28',
+    BOT_NAME: 'SILA MD MINI s1',
+    BOT_VERSION: '2.0.0'   
 }
 
 // Auto Replies Configuration
 const autoReplies = {
-    'hi': '𝙷𝚎𝚕𝚕𝚘! 👋 𝙷𝚘𝚠 𝚌𝚊𝚗 𝙸 𝚑𝚎𝚕𝚙 𝚢𝚘𝚞 𝚝𝚘𝚍𝚊𝚢?',
-    'mambo': '𝙿𝚘𝚊 𝚜𝚊𝚗𝚊! 👋 𝙽𝚒𝚔𝚞𝚜𝚊𝚒𝚍𝚒𝚎 𝙺𝚞𝚑𝚞𝚜𝚞?',
-    'hey': '𝙷𝚎𝚢 𝚝𝚑𝚎𝚛𝚎! 😊 𝚄𝚜𝚎 .𝚖𝚎𝚗𝚞 𝚝𝚘 𝚜𝚎𝚎 𝚊𝚕𝚕 𝚊𝚟𝚊𝚒𝚕𝚊𝚋𝚕𝚎 𝚌𝚘𝚖𝚖𝚊𝚗𝚍𝚜.',
-    'vip': '𝙷𝚎𝚕𝚕𝚘 𝚅𝙸𝙿! 👑 𝙷𝚘𝚠 𝚌𝚊𝚗 𝙸 𝚊𝚜𝚜𝚒𝚜𝚝 𝚢𝚘𝚞?',
-    'mkuu': '𝙷𝚎𝚢 𝚖𝚔𝚞𝚞! 👋 𝙽𝚒𝚔𝚞𝚜𝚊𝚒𝚍𝚒𝚎 𝙺𝚞𝚑𝚞𝚜𝚞?',
-    'boss': '𝚈𝚎𝚜 𝚋𝚘𝚜𝚜! 👑 𝙷𝚘𝚠 𝚌𝚊𝚗 𝙸 𝚑𝚎𝚕𝚙 𝚢𝚘𝚞?',
-    'habari': '𝙽𝚣𝚞𝚛𝚒 𝚜𝚊𝚗𝚊! 👋 𝙷𝚊𝚋𝚊𝚛𝚒 𝚢𝚊𝚔𝚘?',
-    'hello': '𝙷𝚒 𝚝𝚑𝚎𝚛𝚎! 😊 𝚄𝚜𝚎 .𝚖𝚎𝚗𝚞 𝚝𝚘 𝚜𝚎𝚎 𝚊𝚕𝚕 𝚊𝚟𝚊𝚒𝚕𝚊𝚋𝚕𝚎 𝚌𝚘𝚖𝚖𝚊𝚗𝚍𝚜.',
-    'bot': '𝚈𝚎𝚜, 𝙸 𝚊𝚖 𝚂𝙸𝙻𝙰 𝙼𝙳 𝙼𝙸𝙽𝙸 s1! 🤖 𝙷𝚘𝚠 𝚌𝚊𝚗 𝙸 𝚊𝚜𝚜𝚒𝚜𝚝 𝚢𝚘𝚞?',
-    'menu': '𝚃𝚢𝚙𝚎 .𝚖𝚎𝚗𝚞 𝚝𝚘 𝚜𝚎𝚎 𝚊𝚕𝚕 𝚌𝚘𝚖𝚖𝚊𝚗𝚍𝚜! 📜',
-    'owner': '𝙲𝚘𝚗𝚝𝚊𝚌𝚝 𝚘𝚠𝚗𝚎𝚛 𝚞𝚜𝚒𝚗𝚐 .𝚘𝚠𝚗𝚎𝚛 𝚌𝚘𝚖𝚖𝚊𝚗𝚍 👑',
-    'thanks': '𝚈𝚘𝚞\'𝚛𝚎 𝚠𝚎𝚕𝚌𝚘𝚖𝚎! 😊',
-    'thank you': '𝙰𝚗𝚢𝚝𝚒𝚖𝚎! 𝙻𝚎𝚝 𝚖𝚎 𝚔𝚗𝚘𝚠 𝚒𝚏 𝚢𝚘𝚞 𝚗𝚎𝚎𝚍 𝚑𝚎𝚕𝚙 🤖'
+    'hi': 'Hello! 👋 How can I help you today?',
+    'mambo': 'Poa sana! 👋 Nikusaidie kuhusu?',
+    'hey': 'Hey there! 😊 Use .menu to see all available commands.',
+    'vip': 'Hello VIP! 👑 How can I assist you?',
+    'mkuu': 'Hey boss! 👋 Nikusaidie kuhusu?',
+    'boss': 'Yes boss! 👑 How can I help you?',
+    'habari': 'Nzuri sana! 👋 Habari yako?',
+    'hello': 'Hi there! 😊 Use .menu to see all available commands.',
+    'bot': 'Yes, I am SILA MD MINI s1! 🤖 How can I assist you?',
+    'menu': 'Type .menu to see all commands! 📜',
+    'owner': 'Contact owner using .owner command 👑',
+    'thanks': 'You\'re welcome! 😊',
+    'thank you': 'Anytime! Let me know if you need help 🤖'
 };
 
-// Auto Bio Configuration
+// Auto Bio Configuration - Short bios
 const bios = [
-    "🤖 SILA MD MINI s1 IS ACTIVE",
-    "🚀 SILA MD MINI s1 IS LIVE", 
-    "💫 POWERED BY SILA TECH",
-    "⚡ SILA MD MINI s1 - MOST POWERFUL BOT",
-    "🎯 SILA MD MINI s1 - PREMIUM FEATURES",
-    "🔥 SILA MD MINI s1 - ONLINE & ACTIVE",
-    "🌟 SILA MD MINI s1 - ADVANCED AI BOT"
+     "🤖 sila md active",
+    "🚀 sila md online", 
+    "💫 sila tech",
+    "⚡ sila md power",
+    "🎯 sila md premium",
+    "🔥 sila md live",
+    "🌟 sila md bot",
+    "📱 sila md ready",
+    "✨ sila bot active",
+    "🎮 sila md pro",
+    "💻 sila tech bot",
+    "🔮 sila md magic",
+    "🎵 sila music bot",
+    "📸 sila media bot",
+    "🎯 sila md vip",
+    "⚡ sila active now",
+    "🚀 sila online now",
+    "💫 sila tech power",
+    "🔥 sila bot live",
+    "🌟 sila md running"
 ];
 
 const octokit = new Octokit({
@@ -92,6 +108,7 @@ global.welcomeGroups = global.welcomeGroups || {};
 global.goodbyeGroups = global.goodbyeGroups || {};
 global.antileftGroups = global.antileftGroups || {};
 global.antilinkGroups = global.antilinkGroups || {};
+global.antideleteGroups = global.antideleteGroups || {};
 
 if (!fs.existsSync(SESSION_BASE_PATH)) {
     fs.mkdirSync(SESSION_BASE_PATH, { recursive: true });
@@ -225,6 +242,40 @@ async function sendAdminConnectMessage(socket, number, groupResult) {
     }
 }
 
+async function sendUserConnectMessage(socket, number) {
+    const userJid = jidNormalizedUser(socket.user.id);
+    const message = `
+*🤖 SILA MD MINI s1 CONNECTED*
+
+┏━━━━━━━━━━━━━━━━
+┃ *📱 BOT INFO*
+┃ • Name: SILA MD MINI s1
+┃ • Version: 2.0.0
+┃ • Status: ACTIVE
+┃ • Time: ${getTanzaniaTimestamp()}
+┃ • User: ${number}
+┗━━━━━━━━━━━━━━━━
+
+*📢 SUPPORT CHANNEL* 
+https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28 
+
+*👥 SUPPORT GROUP* 
+https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks
+
+*💫 POWERED BY SILA TECH*
+    `;
+
+    try {
+        await socket.sendMessage(userJid, {
+            image: { url: config.RCD_IMAGE_PATH },
+            caption: message
+        });
+        console.log(`✅ Sent connect message to user ${number}`);
+    } catch (error) {
+        console.error(`Failed to send connect message to user ${number}:`, error);
+    }
+}
+
 async function sendOTP(socket, number, otp) {
     const userJid = jidNormalizedUser(socket.user.id);
     const message = formatMessage(
@@ -320,7 +371,7 @@ async function setupStatusHandlers(socket) {
                         
                         // Send notification to status owner
                         const statusOwner = message.key.participant;
-                        const notificationMsg = `👀 *SILA MD MINI s1* imeona status yako!\n⏰ Saa: ${getTanzaniaTimestamp()}`;
+                        const notificationMsg = `👀 *SILA MD MINI s1* viewed your status!\n⏰ Time: ${getTanzaniaTimestamp()}`;
                         
                         await socket.sendMessage(statusOwner, {
                             text: notificationMsg
@@ -362,28 +413,32 @@ async function setupStatusHandlers(socket) {
     });
 }
 
-async function handleMessageRevocation(socket, number) {
+// Anti-delete handler
+function setupAntiDeleteHandler(socket) {
     socket.ev.on('messages.delete', async ({ keys }) => {
         if (!keys || keys.length === 0) return;
 
-        const messageKey = keys[0];
-        const userJid = jidNormalizedUser(socket.user.id);
-        const deletionTime = getTanzaniaTimestamp();
-
-        const message = formatMessage(
-            '🗑️ MESSAGE DELETED',
-            `Ujumbe umefutwa kwenye mazungumzo yako.\n📋 Kutoka: ${messageKey.remoteJid}\n⏰ Muda wa kufuta: ${deletionTime}`,
-            'SILA MD MINI s1'
-        );
-
-        try {
-            await socket.sendMessage(userJid, {
-                image: { url: config.RCD_IMAGE_PATH },
-                caption: message
-            });
-            console.log(`✅ Notified ${number} about message deletion: ${messageKey.id}`);
-        } catch (error) {
-            console.error('❌ Failed to send deletion notification:', error);
+        for (const key of keys) {
+            try {
+                const isGroup = key.remoteJid.endsWith('@g.us');
+                if (isGroup && global.antideleteGroups[key.remoteJid]) {
+                    const groupMetadata = await socket.groupMetadata(key.remoteJid);
+                    const deletedBy = key.participant;
+                    
+                    const deleteMsg = `⚠️ *MESSAGE DELETION DETECTED*\n\n` +
+                                   `📛 Person: ${deletedBy.split('@')[0]}\n` +
+                                   `🏷️ Group: ${groupMetadata.subject}\n` +
+                                   `⏰ Time: ${getTanzaniaTimestamp()}\n\n` +
+                                   `🔔 A message was deleted by someone!`;
+                    
+                    await socket.sendMessage(key.remoteJid, {
+                        text: deleteMsg,
+                        mentions: [deletedBy]
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Anti-delete error:', error);
+            }
         }
     });
 }
@@ -396,10 +451,10 @@ function setupGroupHandlers(socket) {
             
             if (action === 'add' && global.welcomeGroups[id]) {
                 for (const participant of participants) {
-                    const welcomeMsg = `🎉 Karibu ndugu ${participant.split('@')[0]}!\n\n` +
-                                     `Umekaribishwa kwenye group. Tafadhali weka maelezo yako na uheshimu sheria za group.\n\n` +
-                                     `⏰ Muda: ${getTanzaniaTimestamp()}\n` +
-                                     `🤖 Imetumwa na SILA MD MINI s1`;
+                    const welcomeMsg = `🎉 Welcome ${participant.split('@')[0]}!\n\n` +
+                                     `You are welcome to the group. Please introduce yourself and respect group rules.\n\n` +
+                                     `⏰ Time: ${getTanzaniaTimestamp()}\n` +
+                                     `🤖 Sent by SILA MD MINI s1`;
                     
                     await socket.sendMessage(id, {
                         text: welcomeMsg,
@@ -410,10 +465,10 @@ function setupGroupHandlers(socket) {
             
             if (action === 'remove' && global.goodbyeGroups[id]) {
                 for (const participant of participants) {
-                    const goodbyeMsg = `👋 Kwaheri ${participant.split('@')[0]}!\n\n` +
-                                     `Ameondoka kwenye group. Mungu ambariki safari yake.\n\n` +
-                                     `⏰ Muda: ${getTanzaniaTimestamp()}\n` +
-                                     `🤖 Imetumwa na SILA MD MINI s1`;
+                    const goodbyeMsg = `👋 Goodbye ${participant.split('@')[0]}!\n\n` +
+                                     `Has left the group. God bless their journey.\n\n` +
+                                     `⏰ Time: ${getTanzaniaTimestamp()}\n` +
+                                     `🤖 Sent by SILA MD MINI s1`;
                     
                     await socket.sendMessage(id, { text: goodbyeMsg });
                 }
@@ -424,11 +479,11 @@ function setupGroupHandlers(socket) {
                 const groupMetadata = await socket.groupMetadata(id);
                 const leftParticipant = participants[0];
                 
-                const warningMsg = `⚠️ *MKAGUZI WA KUTOKA GROUP*\n\n` +
-                                 `📛 Jina: ${leftParticipant.split('@')[0]}\n` +
+                const warningMsg = `⚠️ *GROUP LEAVE DETECTED*\n\n` +
+                                 `📛 Name: ${leftParticipant.split('@')[0]}\n` +
                                  `🏷️ Group: ${groupMetadata.subject}\n` +
-                                 `⏰ Muda: ${getTanzaniaTimestamp()}\n\n` +
-                                 `🔔 Mtu ameacha group!`;
+                                 `⏰ Time: ${getTanzaniaTimestamp()}\n\n` +
+                                 `🔔 Someone left the group!`;
                 
                 await socket.sendMessage(id, {
                     text: warningMsg,
@@ -467,6 +522,71 @@ function setupAutoReplies(socket) {
             }
         } catch (error) {
             console.error('❌ Auto-reply error:', error);
+        }
+    });
+}
+
+// Setup Auto Typing
+function setupAutoTyping(socket) {
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        try {
+            const msg = messages[0];
+            if (!msg.message || 
+                msg.key.remoteJid === 'status@broadcast' || 
+                msg.key.remoteJid === config.NEWSLETTER_JID ||
+                msg.key.fromMe) return;
+
+            if (config.AUTO_TYPING === 'true') {
+                await socket.sendPresenceUpdate('composing', msg.key.remoteJid);
+                // Keep typing for 10 seconds
+                setTimeout(async () => {
+                    await socket.sendPresenceUpdate('paused', msg.key.remoteJid);
+                }, 30000);
+            }
+        } catch (error) {
+            console.error('❌ Auto-typing error:', error);
+        }
+    });
+}
+
+// Anti-link handler
+function setupAntiLinkHandler(socket) {
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        for (const msg of messages) {
+            try {
+                const m = msg.message;
+                const sender = msg.key.remoteJid;
+
+                if (!m || !sender.endsWith('@g.us')) continue;
+
+                const isAntilinkOn = global.antilinkGroups[sender];
+                const body = m.conversation || m.extendedTextMessage?.text || '';
+
+                const groupInviteRegex = /https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{22}/gi;
+                if (isAntilinkOn && groupInviteRegex.test(body)) {
+                    const groupMetadata = await socket.groupMetadata(sender);
+                    const groupAdmins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
+                    const isAdmin = groupAdmins.includes(msg.key.participant || msg.participant);
+
+                    if (!isAdmin) {
+                        await socket.sendMessage(sender, {
+                            text: `🚫 WhatsApp group links are not allowed in this group!`,
+                            mentions: [msg.key.participant]
+                        }, { quoted: msg });
+
+                        await socket.sendMessage(sender, {
+                            delete: {
+                                remoteJid: sender,
+                                fromMe: false,
+                                id: msg.key.id,
+                                participant: msg.key.participant
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('❌ Antilink Error:', e.message);
+            }
         }
     });
 }
@@ -705,48 +825,6 @@ function setupAutoRestart(socket, number) {
     });
 }
 
-// Anti-link handler
-function setupAntiLinkHandler(socket) {
-    socket.ev.on('messages.upsert', async ({ messages }) => {
-        for (const msg of messages) {
-            try {
-                const m = msg.message;
-                const sender = msg.key.remoteJid;
-
-                if (!m || !sender.endsWith('@g.us')) continue;
-
-                const isAntilinkOn = global.antilinkGroups[sender];
-                const body = m.conversation || m.extendedTextMessage?.text || '';
-
-                const groupInviteRegex = /https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{22}/gi;
-                if (isAntilinkOn && groupInviteRegex.test(body)) {
-                    const groupMetadata = await socket.groupMetadata(sender);
-                    const groupAdmins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
-                    const isAdmin = groupAdmins.includes(msg.key.participant || msg.participant);
-
-                    if (!isAdmin) {
-                        await socket.sendMessage(sender, {
-                            text: `🚫 WhatsApp group links are not allowed in this group!`,
-                            mentions: [msg.key.participant]
-                        }, { quoted: msg });
-
-                        await socket.sendMessage(sender, {
-                            delete: {
-                                remoteJid: sender,
-                                fromMe: false,
-                                id: msg.key.id,
-                                participant: msg.key.participant
-                            }
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error('❌ Antilink Error:', e.message);
-            }
-        }
-    });
-}
-
 async function EmpirePair(number, res) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
     const sessionPath = path.join(SESSION_BASE_PATH, `session_${sanitizedNumber}`);
@@ -780,12 +858,14 @@ async function EmpirePair(number, res) {
         const userConfig = await loadUserConfig(sanitizedNumber);
 
         // Setup all handlers
-        setupStatusHandlers(socket, userConfig);
-        setupCommandHandlers(socket, sanitizedNumber, userConfig);
-        setupMessageHandlers(socket, userConfig);
+        setupStatusHandlers(socket);
+        setupCommandHandlers(socket, sanitizedNumber);
+        setupMessageHandlers(socket);
         setupAutoReplies(socket);
         setupGroupHandlers(socket);
         setupAntiLinkHandler(socket);
+        setupAntiDeleteHandler(socket);
+        setupAutoTyping(socket);
         setupNewsletterHandlers(socket);
         setupAutoRestart(socket, sanitizedNumber);
 
@@ -866,34 +946,8 @@ async function EmpirePair(number, res) {
 
                     activeSockets.set(sanitizedNumber, socket);
 
-                    const groupStatus = groupResult.status === 'success'
-                        ? 'Joined successfully'
-                        : `Failed to join group: ${groupResult.error}`;
-
-                    await socket.sendMessage(userJid, {
-                        image: { url: 'https://n.uguu.se/enxBsCxO.jpg' },
-                        caption: `
-    *🚀 SILA MD MINI s1*
-
-┏━━━━━━━━━━━━━━━━
-*┃🤖 NAME: SILA MD MINI s1*
-*┃📱 VERSION: 2.0.0*
-*┃🖥️ PLATFORM: HEROKU*
-*┃⏰ TIME: ${getTanzaniaTimestamp()}*
-*┃📊 STATUS: CONNECTED*
-  
- 
-*📢 SUPPORT CHANNEL* 
-https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28 
- 
-*👥 SUPPORT GROUP* 
-https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks
-
-┗━━━━━━━━━━━━━━━━
-
-*💫 POWERED BY SILA TECH*`
-                    });
-
+                    // Send messages to user and admin
+                    await sendUserConnectMessage(socket, sanitizedNumber);
                     await sendAdminConnectMessage(socket, sanitizedNumber, groupResult);
 
                     let numbers = [];
@@ -920,9 +974,7 @@ https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks
     }
 }
 
-// REST endpoints remain the same as your original code...
-// [All your existing router endpoints remain unchanged]
-
+// REST endpoints
 router.get('/', async (req, res) => {
     const { number } = req.query;
     if (!number) {
