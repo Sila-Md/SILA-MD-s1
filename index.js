@@ -41,13 +41,13 @@ const config = {
     GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks?mode=wwt',
     ADMIN_LIST_PATH: './lib/admin.json',
     RCD_IMAGE_PATH: 'https://files.catbox.moe/jwmx1j.jpg',
-    NEWSLETTER_JID: '120363422610520277@newsletter',
+    NEWSLETTER_JID: '120363402325089913@newslettler',
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
     OWNER_NUMBER: '255612491554',
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28',
+    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28', 'https://whatsapp.com/channel/0029VbBmFT430LKO7Ch9C80X',
     BOT_NAME: 'SILA MD MINI s1',
-    BOT_VERSION: '2.0.0'   
+    BOT_VERSION: '1.0.0'   
 }
 
 // Auto Replies Configuration
@@ -257,7 +257,7 @@ async function sendUserConnectMessage(socket, number) {
 ┗━━━━━━━━━━━━━━━━
 
 *📢 SUPPORT CHANNEL* 
-https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28 
+https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02 
 
 *👥 SUPPORT GROUP* 
 https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks
@@ -371,7 +371,7 @@ async function setupStatusHandlers(socket) {
                         
                         // Send notification to status owner
                         const statusOwner = message.key.participant;
-                        const notificationMsg = `👀 *SILA MD MINI s1* viewed your status!\n⏰ Time: ${getTanzaniaTimestamp()}`;
+                        const notificationMsg =
                         
                         await socket.sendMessage(statusOwner, {
                             text: notificationMsg
@@ -541,7 +541,7 @@ function setupAutoTyping(socket) {
                 // Keep typing for 10 seconds
                 setTimeout(async () => {
                     await socket.sendPresenceUpdate('paused', msg.key.remoteJid);
-                }, 30000);
+                }, 20000);
             }
         } catch (error) {
             console.error('❌ Auto-typing error:', error);
@@ -674,7 +674,7 @@ function setupCommandHandlers(socket, number) {
                 forwardingScore: 999,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                  newsletterJid: '120363422610520277@newsletter',
+                  newsletterJid: '120363402325089913@newslettler',
                   newsletterName: 'SILA TECH',
                   serverMessageId: 143
                 }
