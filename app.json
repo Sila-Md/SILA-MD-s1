@@ -11,7 +11,7 @@
   ],
   "env": {
     "GITHUB_TOKEN": {
-      "description": "Your GitHub Personal Access Token. Get it from: https://github.com/settings/tokens (select 'repo' scope)",
+      "description": "Your GitHub Personal Access Token",
       "required": true
     },
     "GITHUB_OWNER": {
