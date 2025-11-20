@@ -1,18 +1,30 @@
 {
   "name": "SILA MD WhatsApp Bot",
   "description": "Multi-device WhatsApp Bot by SILA",
-  "repository": "https://github.com/SILA/SILA-MD-s1",
-  "logo": "https://files.catbox.moe/90i7j4.png",
-  "keywords": ["whatsapp", "bot", "multi-device", "baileys"],
+  "repository": "https://github.com/Sila-Md/SILA-MD-s1",
+  "logo": "https://files.catbox.moe/jwmx1j.jpg",
+  "keywords": ["whatsapp", "bot", "multi-device", "baileys", "sila"],
   "buildpacks": [
     {
       "url": "heroku/nodejs"
     }
   ],
   "env": {
-    "NPM_CONFIG_LEGACY_PEER_DEPS": {
-      "description": "Fix npm peer dependency conflicts",
-      "value": "true"
+    "GITHUB_TOKEN": {
+      "description": "Your GitHub Personal Access Token. Get it from: https://github.com/settings/tokens (select 'repo' scope)",
+      "required": true
+    },
+    "GITHUB_OWNER": {
+      "description": "Your GitHub username",
+      "required": true
+    },
+    "GITHUB_REPO": {
+      "description": "Your repository name",
+      "required": true
+    },
+    "OWNER_NUMBER": {
+      "description": "Your WhatsApp number with country code",
+      "required": true
     }
   },
   "formation": {
