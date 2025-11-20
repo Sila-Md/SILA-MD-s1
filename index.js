@@ -60,7 +60,9 @@ const config = {
     ]    
 }
 
-const octokit = new Octokit({ auth: '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' });
+const octokit = new Octokit({ 
+  auth: process.env.GITHUB_TOKEN 
+});
 const owner = 'Sila-Md';
 const repo = 'SILA-MD-s1';
 
