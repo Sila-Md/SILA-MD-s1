@@ -5,8 +5,7 @@
   "main": "lib/connection.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node lib/connection.js",
-    "heroku-postbuild": "npm install --legacy-peer-deps"
+    "start": "node lib/connection.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "git+https://github.com/1122bot/Baileys.git",
