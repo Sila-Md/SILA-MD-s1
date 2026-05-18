@@ -8,6 +8,10 @@ function convertToBool(text, fault = 'true') {
 }
 
 module.exports = {
+    // MongoDB Configuration
+    MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://kxshrii:i7sgjXF6SO2cTJwU@kelumxz.zggub8h.mongodb.net/sila_md_bot',
+    
+    // Language
     LANG: 'en',
     WELCOME: 'true',
     
@@ -27,11 +31,11 @@ module.exports = {
 
     HEROKU_APP_URL: 'https://sila-md-mini-bot-hgpz.onrender.com',
     MAX_RETRIES: 3,
-    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks',
+    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/C0CWyj7RapP2vX7vNdUSTK',
     ADMIN_LIST_PATH: './lib/admin.json',
-    RCD_IMAGE_PATH: 'https://files.catbox.moe/jwmx1j.jpg',
-    NEWSLETTER_JID: '120363422610520277@newsletter',
+    RCD_IMAGE_PATH: 'https://i.ibb.co/4RM2GC9F/Sila-mini.jpg',  // ✅ IMAGE IMEBADILISHWA
+    NEWSLETTER_JID: '120363402325089913@newsletter',  // ✅ JID IMEBADILISHWA
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28'
+    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02'  // ✅ CHANNEL IMEBADILISHWA
 };
