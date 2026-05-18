@@ -1,8 +1,8 @@
 // plugins/alive.js
 module.exports = {
-    command: 'alive',
+    command: 'alive2',
     description: 'Check if bot is active',
-    alias: ['status', 'runtime'],
+    alias: ['status2', 'runtime2'],
     category: 'utility',
     async execute(socket, msg, args, botNumber) {
         const from = msg.key.remoteJid;
