@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node lib/connection.js",
     "heroku-postbuild": "npm install --legacy-peer-deps"
+  },
+  "dependencies": {
     "@whiskeysockets/baileys": "npm:gifted-baileys@2.0.6",
     "adm-zip": "^0.5.10",
     "express": "^4.18.2",
@@ -38,7 +40,6 @@
     "translate-google-api": "^1.0.4",
     "puppeteer-core": "^10.1.0",
     "chrome-aws-lambda": "^10.1.0",
-    "fs": "^0.0.1-security",
     "@hapi/boom": "^10.0.1"
   },
   "engines": {
