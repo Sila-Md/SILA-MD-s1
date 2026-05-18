@@ -36,7 +36,6 @@
       position: relative;
     }
     
-    /* Effets d'arrière-plan */
     body::before {
       content: '';
       position: absolute;
@@ -50,7 +49,6 @@
       z-index: -2;
     }
     
-    /* Grille en arrière-plan */
     .grid {
       position: absolute;
       top: 0;
@@ -314,12 +312,6 @@
       animation: pulse 2s infinite;
     }
     
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(0, 247, 255, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(0, 247, 255, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(0, 247, 255, 0); }
-    }
-    
     @media (max-width: 500px) {
       .input-container {
         flex-direction: column;
@@ -341,7 +333,6 @@
       }
     }
     
-    /* Effets de particules */
     .particles {
       position: absolute;
       top: 0;
@@ -365,16 +356,65 @@
       90% { opacity: 1; }
       100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
     }
+
+    /* Status badges */
+    .status-success {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid #00ff88;
+      color: #00ff88;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    
+    .status-error {
+      background: rgba(255, 42, 109, 0.1);
+      border: 1px solid #ff2a6d;
+      color: #ff2a6d;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    
+    .status-warning {
+      background: rgba(255, 170, 0, 0.1);
+      border: 1px solid #ffaa00;
+      color: #ffaa00;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-links a {
+      color: var(--secondary);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 5px 10px;
+      background: rgba(0, 247, 255, 0.1);
+      border-radius: 5px;
+      transition: 0.3s;
+    }
+    
+    .nav-links a:hover {
+      background: var(--secondary);
+      color: var(--dark);
+    }
   </style>
 </head>
 <body>
   <div class="grid"></div>
   <div class="particles" id="particles"></div>
   
-  <!-- Audio pour la musique -->
   <audio id="background-music" autoplay loop>
     <source src="https://files.catbox.moe/m3i466.mp3" type="audio/mpeg">
-    Votre navigateur ne supporte pas l'élément audio.
   </audio>
   
   <div class="container">
@@ -390,13 +430,21 @@
             <h3 class="centered-text">🤖 SILA MD BOT 🤖</h3>
             <h6>🌟 ENTER YOUR WHATSAPP NUMBER 🌟 </h6>
             <div class="input-container">
-              <input placeholder="+923078071982" type="tel" id="number" name="number">
+              <input placeholder="255612491554" type="tel" id="number" name="number">
               <button id="submit">❤️ SUBMIT ❤️</button>
             </div>
            
-            <a id="waiting-message" class="centered-text" style="display: none;">WAITING...😊</a>
+            <div id="waiting-message" style="display: none;">
+              <i class="fas fa-spinner fa-spin"></i> WAITING...😊
+            </div>
             <main id="pair"></main>
           </p>
+        </div>
+        
+        <div class="nav-links">
+          <a href="/admin">🔐 Admin Panel</a>
+          <a href="/dashboard">📊 Dashboard</a>
+          <a href="/settings">⚙️ Settings</a>
         </div>
       </div>
     </div>
@@ -408,10 +456,9 @@
     let b = document.getElementById("submit");
     let c = document.getElementById("number");
     let box = document.getElementById("box");
-    let waitingMessage = document.getElementById("waiting-message");
+    let waitingMessageDiv = document.getElementById("waiting-message");
     let backgroundMusic = document.getElementById("background-music");
 
-    // Fonction pour créer des particules d'arrière-plan
     function createParticles() {
       const particlesContainer = document.getElementById('particles');
       const particleCount = 30;
@@ -440,7 +487,6 @@
     
     createParticles();
 
-    // Fonction pour copier le code
     async function Copy() {
       let text = document.getElementById("copy-value").innerText;
       let codeDisplay = document.getElementById("code-display");
@@ -461,59 +507,87 @@
       }, 2000);
     }
 
-    // Gestionnaire d'événement pour le bouton de soumission
+    window.Copy = Copy;
+
     b.addEventListener("click", async (e) => {
       e.preventDefault();
       if (!c.value) {
-        a.innerHTML = '<div style="color:var(--accent);font-weight:500;background:rgba(255,42,109,0.1);padding:10px;border-radius:8px;border:1px solid rgba(255,42,109,0.3)"><i class="fas fa-exclamation-circle"></i> Enter your WhatsApp number with country code.</div>';
-      } else if (c.value.replace(/[^0-9]/g, "").length < 11) {
-        a.innerHTML = '<div style="color:var(--accent);font-weight:500;background:rgba(255,42,109,0.1);padding:10px;border-radius:8px;border:1px solid rgba(255,42,109,0.3)"><i class="fas fa-times"></i> Invalid number format</div>';
-      } else {
-        const bc = c.value.replace(/[^0-9]/g, "");
-        let bb = "";
-        let bbc = "";
-        const cc = bc.split('');
-        cc.map(a => {
-          bbc += a;
-          if (bbc.length == 3) {
-            bb += " " + a;
-          } else if (bbc.length == 8) {
-            bb += " " + a;
-          } else {
-            bb += a;
-          }
-        });
-        c.type = "text";
-        c.value = "+" + bb;
-        c.style.color = "white";
-        waitingMessage.style.display = "block";
-        a.innerHTML = '';
+        a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-circle"></i> Enter your WhatsApp number with country code.</div>';
+        return;
+      }
+      
+      const bc = c.value.replace(/[^0-9]/g, "");
+      if (bc.length < 10) {
+        a.innerHTML = '<div class="status-error"><i class="fas fa-times"></i> Invalid number format - too short</div>';
+        return;
+      }
+      
+      waitingMessageDiv.style.display = "block";
+      a.innerHTML = '';
+      
+      try {
+        let { data } = await axios(`/?number=${bc}`);
         
-        try {
-          let { data } = await axios(`/code?number=${bc}`);
-          let code = data.code || "Service Unavailable";
-          waitingMessage.style.display = "none";
-          
+        waitingMessageDiv.style.display = "none";
+        
+        if (data.code) {
+          // New pairing code
           a.innerHTML = `
             <div class="code-display pulse" id="code-display" onclick="Copy()">
               <i class="fas fa-copy" style="color:var(--secondary);"></i>
               <span class="code-text">CODE:</span>
-              <span class="code-value" id="copy-value">${code}</span>
+              <span class="code-value" id="copy-value">${data.code}</span>
+            </div>
+            <div class="status-success" style="margin-top: 10px; font-size: 12px;">
+              <i class="fas fa-info-circle"></i> Code expires in 20 seconds!
             </div>
           `;
-        } catch (error) {
-          waitingMessage.style.display = "none";
-          a.innerHTML = '<div style="color:var(--accent);font-weight:500;background:rgba(255,42,109,0.1);padding:10px;border-radius:8px;border:1px solid rgba(255,42,109,0.3)"><i class="fas fa-exclamation-triangle"></i> Service Unavailable</div>';
+        } else if (data.status === 'already_connected') {
+          a.innerHTML = `
+            <div class="status-success">
+              <i class="fas fa-check-circle"></i> ✅ ALREADY CONNECTED!<br>
+              📱 Number: +${bc}<br>
+              ${data.connectionTime ? `⏱️ Connected since: ${data.connectionTime}<br>` : ''}
+              ${data.uptime ? `📊 Uptime: ${data.uptime}` : ''}
+            </div>
+          `;
+        } else if (data.status === 'reconnecting') {
+          a.innerHTML = `
+            <div class="status-warning">
+              <i class="fas fa-sync-alt fa-spin"></i> RECONNECTING...<br>
+              📱 Number: +${bc}<br>
+              Please wait a moment for connection.
+            </div>
+          `;
+        } else if (data.error) {
+          a.innerHTML = `<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Error: ${data.error}</div>`;
+        } else {
+          a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Service Unavailable. Please try again.</div>';
+        }
+      } catch (error) {
+        waitingMessageDiv.style.display = "none";
+        console.error('Pairing error:', error);
+        
+        if (error.response && error.response.status === 503) {
+          a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Service Unavailable - Bot is busy. Please try again in a few seconds.</div>';
+        } else if (error.response && error.response.status === 400) {
+          a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Invalid request. Please check your number.</div>';
+        } else {
+          a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Network error. Please check your connection and try again.</div>';
         }
       }
     });
 
-    // Lecture automatique de la musique
+    // Auto-play music with user interaction
     document.addEventListener('DOMContentLoaded', function() {
-      backgroundMusic.volume = 0.5; // Volume à 50%
-      backgroundMusic.play().catch(e => {
-        console.log("La lecture automatique de l'audio a été bloquée:", e);
-      });
+      backgroundMusic.volume = 0.3;
+      
+      // Try to play music after user clicks anywhere
+      document.body.addEventListener('click', function() {
+        backgroundMusic.play().catch(e => {
+          console.log("Audio play failed:", e);
+        });
+      }, { once: true });
     });
   </script>
 </body>
