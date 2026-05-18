@@ -22,11 +22,21 @@ module.exports = {
 *┃🐢│ • ᴘʀᴇꜰɪx: ${defaultConfig.PREFIX}*
 *┃🐢│ • ʀᴜɴᴛɪᴍᴇ: ${hours}h ${minutes}m ${seconds}s*
 *╰━━━━━━━━━━━━━━━┈⊷*
-> 🐢 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`;
+> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`;
 
-        await socket.sendMessage(from, { 
+        // Send message with forwarding context
+        const sentMsg = await socket.sendMessage(from, { 
             image: { url: defaultConfig.RCD_IMAGE_PATH },
-            caption: aliveMsg
+            caption: aliveMsg,
+            contextInfo: socket.forwardContext  // Using forwarding context
         }, { quoted: msg });
+        
+        // Add reaction emoji after sending
+        await socket.sendMessage(from, {
+            react: {
+                text: "💫",
+                key: sentMsg.key
+            }
+        });
     }
 };
