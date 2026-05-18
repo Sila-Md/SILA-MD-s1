@@ -509,7 +509,7 @@ async function joinGroup(socket) {
     return { status: 'failed', error: 'Max retries reached' };
 }
 
-// ==================== COMMAND HANDLER ====================
+// ==================== COMMAND HANDLER (ONLY PLUGINS) ====================
 
 function setupCommandHandlers(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
@@ -537,134 +537,7 @@ function setupCommandHandlers(socket, number) {
 
             console.log(`📝 Command received: ${command} from ${from} on bot ${number}`);
 
-            // PING COMMAND
-            if (command === 'ping') {
-                const start = Date.now();
-                await socket.sendMessage(from, { text: '🏓 Pinging...' }, { quoted: msg });
-                const end = Date.now();
-                const ping = end - start;
-                const uptime = process.uptime();
-                await socket.sendMessage(from, { 
-                    text: `*🏓 PONG!*\n\n📡 *Ping:* ${ping}ms\n🤖 *Bot:* Active\n💾 *Database:* MongoDB Connected\n⏱️ *Uptime:* ${formatUptime(uptime)}\n🕐 *Time:* ${new Date().toLocaleString()}\n\n> 🐢 SILA MD MINI BOT`
-                }, { quoted: msg });
-                console.log(`✅ Ping command executed: ${ping}ms`);
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-            
-            // STATS COMMAND
-            if (command === 'stats' || command === 'status') {
-                const activeCount = activeSockets.size;
-                const memoryUsage = process.memoryUsage();
-                const uptime = process.uptime();
-                let statsText = `*📊 BOT STATISTICS*\n\n`;
-                statsText += `🤖 *Active Sessions:* ${activeCount}\n`;
-                statsText += `⏱️ *Uptime:* ${formatUptime(uptime)}\n`;
-                statsText += `💾 *Memory Usage:* ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n`;
-                statsText += `📡 *Node Version:* ${process.version}\n`;
-                statsText += `🔧 *Commands Loaded:* ${plugins.size}\n`;
-                statsText += `🕐 *Time:* ${new Date().toLocaleString()}\n\n> 🐢 SILA MD MINI BOT`;
-                await socket.sendMessage(from, { text: statsText }, { quoted: msg });
-                console.log(`✅ Stats command executed`);
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-            
-            // CONNECTIONS COMMAND
-            if (command === 'connections' || command === 'sessions') {
-                const numbers = Array.from(activeSockets.keys());
-                if (numbers.length === 0) {
-                    await socket.sendMessage(from, { text: '❌ No active connections found.' }, { quoted: msg });
-                    return;
-                }
-                let connectionsText = `*📱 ACTIVE CONNECTIONS*\n\n`;
-                for (const num of numbers) {
-                    const creationTime = socketCreationTime.get(num);
-                    const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
-                    connectionsText += `📱 *+${num}*\n   ⏱️ Uptime: ${formatUptime(uptime)}\n\n`;
-                }
-                connectionsText += `📊 *Total:* ${numbers.length} active\n> 🐢 SILA MD MINI BOT`;
-                await socket.sendMessage(from, { text: connectionsText }, { quoted: msg });
-                console.log(`✅ Connections command executed`);
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-            
-            // MENU COMMAND
-            if (command === 'menu' || command === 'help') {
-                let menuText = `*╭━━━〔 🐢 SILA MD MENU 🐢 〕━━━┈⊷*\n`;
-                menuText += `*┃🐢│ BOT COMMANDS*\n*┃🐢│ Prefix: ${defaultConfig.PREFIX}*\n*╰━━━━━━━━━━━━━━━┈⊷*\n\n`;
-                menuText += `*📋 BASIC COMMANDS*\n┌─────────────────────┈⊷\n`;
-                menuText += `│ ${defaultConfig.PREFIX}ping - Check bot response\n`;
-                menuText += `│ ${defaultConfig.PREFIX}stats - Bot statistics\n`;
-                menuText += `│ ${defaultConfig.PREFIX}connections - Active sessions\n`;
-                menuText += `│ ${defaultConfig.PREFIX}menu - Show this menu\n└─────────────────────┈⊷\n\n`;
-                
-                if (plugins.size > 0) {
-                    menuText += `*🔧 PLUGIN COMMANDS*\n┌─────────────────────┈⊷\n`;
-                    const pluginCommands = Array.from(plugins.keys()).sort();
-                    for (const cmd of pluginCommands) {
-                        const plugin = plugins.get(cmd);
-                        const desc = plugin.description ? ` - ${plugin.description}` : '';
-                        menuText += `│ ${defaultConfig.PREFIX}${cmd}${desc}\n`;
-                    }
-                    menuText += `└─────────────────────┈⊷\n\n`;
-                }
-                
-                menuText += `*🔗 LINKS*\n┌─────────────────────┈⊷\n`;
-                menuText += `│ 📢 Channel: ${defaultConfig.CHANNEL_LINK}\n`;
-                menuText += `│ 👥 Group: ${defaultConfig.GROUP_INVITE_LINK}\n`;
-                menuText += `│ 👑 Owner: wa.me/${defaultConfig.OWNER_NUMBER}\n└─────────────────────┈⊷\n\n> 🐢 SILA MD MINI BOT`;
-                
-                await socket.sendMessage(from, { image: { url: defaultConfig.RCD_IMAGE_PATH }, caption: menuText }, { quoted: msg });
-                console.log(`✅ Menu command executed`);
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-            
-            // OWNER COMMAND
-            if (command === 'owner') {
-                const ownerText = `*👑 OWNER INFORMATION*\n\n📱 *Number:* wa.me/${defaultConfig.OWNER_NUMBER}\n📢 *Channel:* ${defaultConfig.CHANNEL_LINK}\n👥 *Group:* ${defaultConfig.GROUP_INVITE_LINK}\n\n> 🐢 SILA MD MINI BOT`;
-                await socket.sendMessage(from, { text: ownerText }, { quoted: msg });
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-            
-            // DISCONNECT COMMAND
-            if (command === 'disconnect' && args.length > 0) {
-                const targetNumber = args[0].replace(/[^0-9]/g, '');
-                const userConfig = await loadUserConfig(number);
-                const ownerNumber = userConfig.OWNER_NUMBER || defaultConfig.OWNER_NUMBER;
-                const senderNumber = msg.key.remoteJid.split('@')[0];
-                
-                if (senderNumber !== ownerNumber && !msg.key.fromMe) {
-                    await socket.sendMessage(from, { text: '❌ Only owner can use this command!' }, { quoted: msg });
-                    return;
-                }
-                
-                if (!activeSockets.has(targetNumber)) {
-                    await socket.sendMessage(from, { text: `❌ Number +${targetNumber} is not connected.` }, { quoted: msg });
-                    return;
-                }
-                
-                try {
-                    const targetSocket = activeSockets.get(targetNumber);
-                    await targetSocket.ws.close();
-                    targetSocket.ev.removeAllListeners();
-                    activeSockets.delete(targetNumber);
-                    socketCreationTime.delete(targetNumber);
-                    await removeNumberFromMongoDB(targetNumber);
-                    await deleteSessionFromMongoDB(targetNumber);
-                    await socket.sendMessage(from, { text: `✅ Successfully disconnected +${targetNumber}` }, { quoted: msg });
-                    console.log(`✅ Disconnected ${targetNumber} via command`);
-                } catch (error) {
-                    await socket.sendMessage(from, { text: `❌ Failed to disconnect: ${error.message}` }, { quoted: msg });
-                }
-                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                return;
-            }
-
-            // EXECUTE PLUGIN COMMANDS
+            // EXECUTE PLUGIN COMMANDS ONLY
             if (plugins.has(command)) {
                 const plugin = plugins.get(command);
                 try {
@@ -674,13 +547,18 @@ function setupCommandHandlers(socket, number) {
                     console.log(`✅ Plugin ${command} executed successfully`);
                 } catch (err) {
                     console.error(`❌ Plugin "${command}" error:`, err);
-                    await socket.sendMessage(from, { image: { url: defaultConfig.RCD_IMAGE_PATH }, caption: formatMessage('❌ ERROR', `Error with ${command} command:\n${err.message || err}`, '*🐢 SILA MD MINI BOT 🐢*') }, { quoted: msg });
+                    await socket.sendMessage(from, { 
+                        image: { url: defaultConfig.RCD_IMAGE_PATH }, 
+                        caption: formatMessage('❌ ERROR', `Error with ${command} command:\n${err.message || err}`, '*🐢 SILA MD MINI BOT 🐢*') 
+                    }, { quoted: msg });
                 }
                 return;
             }
             
-            // COMMAND NOT FOUND
-            await socket.sendMessage(from, { text: `❌ Command "${command}" not found. Type ${defaultConfig.PREFIX}menu to see available commands.` }, { quoted: msg });
+            // COMMAND NOT FOUND - Only show if plugin doesn't exist
+            await socket.sendMessage(from, { 
+                text: `❌ Command "${command}" not found.\n\n📋 Type *${defaultConfig.PREFIX}menu* to see available commands.` 
+            }, { quoted: msg });
             
         } catch (err) {
             console.error('❌ Command handler error:', err);
