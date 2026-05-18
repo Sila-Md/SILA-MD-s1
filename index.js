@@ -4,10 +4,8 @@ const path = require('path');
 const { exec } = require('child_process');
 const router = express.Router();
 const pino = require('pino');
-const cheerio = require('cheerio');
 const os = require('os');
 const moment = require('moment-timezone');
-const Jimp = require('jimp');
 const crypto = require('crypto');
 const axios = require('axios');
 const bodyParser = require('body-parser');
@@ -29,8 +27,11 @@ const {
     getStatsForNumber,
     saveAutoReplyToMongoDB,
     getAutoRepliesFromMongoDB,
+    deleteAutoReplyFromMongoDB,
     saveWelcomeMessageToMongoDB,
-    getWelcomeMessageFromMongoDB
+    getWelcomeMessageFromMongoDB,
+    updateMongoDBURI,
+    getMongoDBURI
 } = require('./lib/database');
 
 const {
@@ -41,9 +42,6 @@ const {
     Browsers,
     jidNormalizedUser,
     getContentType,
-    proto,
-    prepareWAMessageMedia,
-    generateWAMessageFromContent,
     downloadContentFromMessage,
     jidDecode
 } = require('@whiskeysockets/baileys');
@@ -62,10 +60,10 @@ const defaultConfig = {
     ANTI_CALL: 'true',
     ANTI_DELETE: 'true',
     AUTO_BIO: 'true',
-    AUTO_LIKE_EMOJI: ['🥹', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
+    AUTO_LIKE_EMOJI: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
     PREFIX: '.',
     MAX_RETRIES: 3,
-    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/C0CWyj7RapP2vX7vNdUSTK',
+    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks',
     RCD_IMAGE_PATH: 'https://i.ibb.co/4RM2GC9F/Sila-mini.jpg',
     NEWSLETTER_JID: '120363402325089913@newsletter',
     NEWSLETTER_MESSAGE_ID: '428',
@@ -88,7 +86,9 @@ connectdb();
 const activeSockets = new Map();
 const socketCreationTime = new Map();
 const SESSION_BASE_PATH = './session';
-const otpStore = new Map();
+
+// Admin PIN
+const ADMIN_PIN = 'sila0022';
 
 // Ensure session directory exists
 if (!fs.existsSync(SESSION_BASE_PATH)) {
@@ -96,14 +96,16 @@ if (!fs.existsSync(SESSION_BASE_PATH)) {
 }
 
 // Helper Functions
-function safeJSONParse(str, defaultValue = []) {
-    try {
-        if (!str || str.trim() === '') return defaultValue;
-        return JSON.parse(str);
-    } catch (error) {
-        console.log('❌ JSON parse error:', error.message);
-        return defaultValue;
-    }
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
 }
 
 function formatMessage(title, content, footer) {
@@ -118,47 +120,12 @@ function getTimestamp() {
     return moment().tz('Asia/Colombo').format('YYYY-MM-DD HH:mm:ss');
 }
 
-async function resize(image, width, height) {
-    let oyy = await Jimp.read(image);
-    let kiyomasa = await oyy.resize(width, height).getBufferAsync(Jimp.MIME_JPEG);
-    return kiyomasa;
-}
-
-function capital(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-const createSerial = (size) => {
-    return crypto.randomBytes(size).toString('hex').slice(0, size);
-}
-
-// Load Plugins
-const plugins = new Map();
-const pluginDir = path.join(__dirname, 'plugins');
-if (fs.existsSync(pluginDir)) {
-    fs.readdirSync(pluginDir).forEach(file => {
-        if (file.endsWith('.js')) {
-            try {
-                const plugin = require(path.join(pluginDir, file));
-                if (plugin.command) {
-                    plugins.set(plugin.command, plugin);
-                }
-            } catch (error) {
-                console.log(`❌ Failed to load plugin ${file}:`, error.message);
-            }
-        }
-    });
-}
-
-// ==================== HANDLERS ====================
-
 async function loadUserConfig(number) {
     try {
         const sanitizedNumber = number.replace(/[^0-9]/g, '');
         const userConfig = await getUserConfigFromMongoDB(sanitizedNumber);
         return { ...defaultConfig, ...userConfig };
     } catch (error) {
-        console.log(`❌ Config load failed, using default: ${error.message}`);
         return { ...defaultConfig };
     }
 }
@@ -187,51 +154,6 @@ async function updateAboutStatus(socket, number) {
     } catch (error) {
         console.error('❌ Failed to update bio:', error);
     }
-}
-
-async function updateStoryStatus(socket, number) {
-    const statusMessage = `*🐢 SILA MD MINI BOT 🐢*\nConnected at: ${getTimestamp()}`;
-    try {
-        await socket.sendMessage('status@broadcast', { text: statusMessage });
-        console.log(`Posted story status for ${number}`);
-    } catch (error) {
-        console.error('Failed to post story status:', error);
-    }
-}
-
-// Newsletter Handlers
-async function setupNewsletterHandlers(socket, number) {
-    socket.ev.on('messages.upsert', async ({ messages }) => {
-        const message = messages[0];
-        if (!message?.key || message.key.remoteJid !== defaultConfig.NEWSLETTER_JID) return;
-
-        try {
-            const emojis = ['🐢', '❤️', '🔥', '😀', '👍'];
-            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            const messageId = message.newsletterServerId;
-
-            if (!messageId) return;
-
-            let retries = defaultConfig.MAX_RETRIES;
-            while (retries > 0) {
-                try {
-                    await socket.newsletterReactMessage(
-                        defaultConfig.NEWSLETTER_JID,
-                        messageId.toString(),
-                        randomEmoji
-                    );
-                    console.log(`Reacted to newsletter message ${messageId} with ${randomEmoji}`);
-                    break;
-                } catch (error) {
-                    retries--;
-                    if (retries === 0) throw error;
-                    await delay(2000);
-                }
-            }
-        } catch (error) {
-            console.error('Newsletter reaction error:', error);
-        }
-    });
 }
 
 // Status Handlers
@@ -272,7 +194,6 @@ async function setupStatusHandlers(socket, number) {
                             { react: { text: randomEmoji, key: message.key } },
                             { statusJidList: [message.key.participant] }
                         );
-                        console.log(`Reacted to status with ${randomEmoji}`);
                         break;
                     } catch (error) {
                         retries--;
@@ -281,86 +202,13 @@ async function setupStatusHandlers(socket, number) {
                     }
                 }
             }
-
-            // Auto reply to status with AI
-            if (userConfig.AUTO_STATUS_REPLY === 'true') {
-                let statusText = '';
-                if (message.message?.conversation) {
-                    statusText = message.message.conversation;
-                } else if (message.message?.extendedTextMessage?.text) {
-                    statusText = message.message.extendedTextMessage.text;
-                } else if (message.message?.imageMessage?.caption) {
-                    statusText = message.message.imageMessage.caption;
-                } else if (message.message?.videoMessage?.caption) {
-                    statusText = message.message.videoMessage.caption;
-                }
-
-                if (statusText) {
-                    const aiResponse = await generateAIResponse(statusText);
-                    await socket.sendMessage(message.key.participant, { 
-                        text: `🤖 *AI Response to your status:*\n\n${aiResponse}`
-                    });
-                    console.log(`AI replied to status from ${message.key.participant}`);
-                }
-            }
         } catch (error) {
             console.error('Status handler error:', error);
         }
     });
 }
 
-// AI Response Generator
-async function generateAIResponse(text) {
-    try {
-        const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encodeURIComponent(text)}`;
-        const response = await axios.get(apiUrl, { timeout: 10000 });
-        
-        if (response.data?.result) return response.data.result;
-        if (response.data?.text) return response.data.text;
-        if (typeof response.data === 'string') return response.data;
-        
-        return "Nimeelewa status yako! Asante kwa kushiriki. 😊";
-    } catch (error) {
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes('happy')) return "Ninafurahi kwa ajili yako! 😊";
-        if (lowerText.includes('sad')) return "Pole sana, natumai utapata faraja. 💔";
-        if (lowerText.includes('love')) return "Upendo ni mzuri sana! ❤️";
-        if (lowerText.includes('morning')) return "Habari ya asubuhi! ☀️";
-        if (lowerText.includes('night')) return "Lala salama! 🌙";
-        return "Nimeona status yako, asante kwa kushiriki! 👍";
-    }
-}
-
-// Message Revocation Handler
-async function handleMessageRevocation(socket, number) {
-    socket.ev.on('messages.delete', async ({ keys }) => {
-        if (!keys || keys.length === 0) return;
-
-        const userConfig = await loadUserConfig(number);
-        if (userConfig.ANTI_DELETE !== 'true') return;
-
-        const messageKey = keys[0];
-        const userJid = jidNormalizedUser(socket.user.id);
-        
-        const message = formatMessage(
-            '🗑️ MESSAGE DELETED',
-            `A message was deleted from your chat.\n📋 From: ${messageKey.remoteJid}\n🍁 Deletion Time: ${getTimestamp()}`,
-            'SILA MD MINI'
-        );
-
-        try {
-            await socket.sendMessage(userJid, {
-                image: { url: defaultConfig.RCD_IMAGE_PATH },
-                caption: message
-            });
-            console.log(`Notified ${number} about message deletion`);
-        } catch (error) {
-            console.error('Failed to send deletion notification:', error);
-        }
-    });
-}
-
-// Auto Reply Handler from MongoDB
+// Auto Reply Handler
 async function setupAutoReplyHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -378,7 +226,6 @@ async function setupAutoReplyHandlers(socket, number) {
 
             if (!text || userConfig.AUTO_REPLY !== 'true') return;
 
-            // Get auto-replies from MongoDB
             const autoReplies = await getAutoRepliesFromMongoDB(number);
             
             for (const [trigger, reply] of Object.entries(autoReplies)) {
@@ -413,11 +260,8 @@ async function setupWelcomeHandlers(socket, number) {
                 for (const user of participants) {
                     const userName = user.split('@')[0];
                     const welcomeText = welcomeMsg?.welcome || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
-*┃🐢│ GROUP NAME*
-*┃🐢│ ${groupName}*
-
-*MOST WELCOME MY DEAR 😍*
-*🐢 @${userName} 🐢*
+*┃🐢│ GROUP NAME: ${groupName}*
+*┃🐢│ WELCOME @${userName} 🐢*
 *╰━━━━━━━━━━━━━━━┈⊷*`;
 
                     await socket.sendMessage(groupId, {
@@ -430,14 +274,10 @@ async function setupWelcomeHandlers(socket, number) {
             }
 
             if (action === 'remove') {
-                const metadata = await socket.groupMetadata(groupId);
-                const groupName = metadata.subject;
-
                 for (const user of participants) {
                     const userName = user.split('@')[0];
                     const leftText = welcomeMsg?.leave || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
-*ALLAH HAFIZ 🥺❤️*
-@${userName}* G 🥺
+*ALLAH HAFIZ @${userName} 🥺*
 *╰━━━━━━━━━━━━━━━┈⊷*`;
 
                     await socket.sendMessage(groupId, {
@@ -562,7 +402,7 @@ function setupAutoRestart(socket, number) {
     });
 }
 
-// ==================== COMMAND HANDLER ====================
+// ==================== COMMAND HANDLER WITH PING ====================
 
 function setupCommandHandlers(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
@@ -584,46 +424,107 @@ function setupCommandHandlers(socket, number) {
                     command = parts[0].toLowerCase();
                     args = parts.slice(1);
                 }
-            } else if (msg.message.buttonsResponseMessage) {
-                const buttonId = msg.message.buttonsResponseMessage.selectedButtonId;
-                const userConfig = await loadUserConfig(number);
-                const prefix = userConfig.PREFIX || defaultConfig.PREFIX;
-                
-                if (buttonId && buttonId.startsWith(prefix)) {
-                    const parts = buttonId.slice(prefix.length).trim().split(/\s+/);
-                    command = parts[0].toLowerCase();
-                    args = parts.slice(1);
-                }
             }
 
             if (!command) return;
 
+            // ============ PING COMMAND ============
+            if (command === 'ping') {
+                const start = Date.now();
+                await socket.sendMessage(from, { text: '🏓 Pinging...' }, { quoted: msg });
+                const end = Date.now();
+                const ping = end - start;
+                
+                const uptime = process.uptime();
+                const uptimeString = formatUptime(uptime);
+                
+                await socket.sendMessage(from, { 
+                    text: `*🏓 PONG!*\n\n📡 *Ping:* ${ping}ms\n🤖 *Bot:* Active\n💾 *Database:* MongoDB Connected\n⏱️ *Uptime:* ${uptimeString}\n🕐 *Time:* ${new Date().toLocaleString()}\n\n> 🐢 SILA MD MINI BOT`
+                }, { quoted: msg });
+                return;
+            }
+            
+            // ============ STATS COMMAND ============
+            if (command === 'stats' || command === 'status') {
+                const activeCount = activeSockets.size;
+                const memoryUsage = process.memoryUsage();
+                const uptime = process.uptime();
+                
+                let statsText = `*📊 BOT STATISTICS*\n\n`;
+                statsText += `🤖 *Active Sessions:* ${activeCount}\n`;
+                statsText += `⏱️ *Uptime:* ${formatUptime(uptime)}\n`;
+                statsText += `💾 *Memory Usage:* ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n`;
+                statsText += `📡 *Node Version:* ${process.version}\n`;
+                statsText += `🕐 *Time:* ${new Date().toLocaleString()}\n\n`;
+                statsText += `> 🐢 SILA MD MINI BOT`;
+                
+                await socket.sendMessage(from, { text: statsText }, { quoted: msg });
+                return;
+            }
+            
+            // ============ CONNECTIONS COMMAND ============
+            if (command === 'connections' || command === 'sessions') {
+                const numbers = Array.from(activeSockets.keys());
+                
+                if (numbers.length === 0) {
+                    await socket.sendMessage(from, { text: '❌ No active connections found.' }, { quoted: msg });
+                    return;
+                }
+                
+                let connectionsText = `*📱 ACTIVE CONNECTIONS*\n\n`;
+                for (const num of numbers) {
+                    const creationTime = socketCreationTime.get(num);
+                    const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
+                    connectionsText += `📱 *+${num}*\n`;
+                    connectionsText += `   ⏱️ Uptime: ${formatUptime(uptime)}\n\n`;
+                }
+                connectionsText += `📊 *Total:* ${numbers.length} active\n`;
+                connectionsText += `> 🐢 SILA MD MINI BOT`;
+                
+                await socket.sendMessage(from, { text: connectionsText }, { quoted: msg });
+                return;
+            }
+            
+            // ============ DISCONNECT COMMAND ============
+            if (command === 'disconnect' && args.length > 0) {
+                const targetNumber = args[0].replace(/[^0-9]/g, '');
+                const userConfig = await loadUserConfig(number);
+                const ownerNumber = userConfig.OWNER_NUMBER || defaultConfig.OWNER_NUMBER;
+                const senderNumber = msg.key.remoteJid.split('@')[0];
+                
+                if (senderNumber !== ownerNumber && !msg.key.fromMe) {
+                    await socket.sendMessage(from, { text: '❌ Only owner can use this command!' }, { quoted: msg });
+                    return;
+                }
+                
+                if (!activeSockets.has(targetNumber)) {
+                    await socket.sendMessage(from, { text: `❌ Number +${targetNumber} is not connected.` }, { quoted: msg });
+                    return;
+                }
+                
+                try {
+                    const targetSocket = activeSockets.get(targetNumber);
+                    await targetSocket.ws.close();
+                    targetSocket.ev.removeAllListeners();
+                    
+                    activeSockets.delete(targetNumber);
+                    socketCreationTime.delete(targetNumber);
+                    await removeNumberFromMongoDB(targetNumber);
+                    await deleteSessionFromMongoDB(targetNumber);
+                    
+                    await socket.sendMessage(from, { text: `✅ Successfully disconnected +${targetNumber}` }, { quoted: msg });
+                    console.log(`✅ Disconnected ${targetNumber} via command`);
+                } catch (error) {
+                    await socket.sendMessage(from, { text: `❌ Failed to disconnect: ${error.message}` }, { quoted: msg });
+                }
+                return;
+            }
+
             // Increment stats
             await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-
-            // Execute plugin
-            if (plugins.has(command)) {
-                const plugin = plugins.get(command);
-                try {
-                    await plugin.execute(socket, msg, args, number);
-                } catch (err) {
-                    console.error(`❌ Plugin "${command}" error:`, err);
-                    await socket.sendMessage(
-                        from,
-                        {
-                            image: { url: defaultConfig.RCD_IMAGE_PATH },
-                            caption: formatMessage(
-                                '❌ ERROR',
-                                `Error with ${command} command:\n${err.message || err}`,
-                                '*🐢 SILA MD MINI BOT 🐢*'
-                            )
-                        },
-                        { quoted: msg }
-                    );
-                }
-            }
+            
         } catch (err) {
-            console.error('❌ Global handler error:', err);
+            console.error('❌ Command handler error:', err);
         }
     });
 }
@@ -634,32 +535,12 @@ async function startBot(number, res = null) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
     const sessionPath = path.join(SESSION_BASE_PATH, `session_${sanitizedNumber}`);
 
-    // Check if already connected
     if (activeSockets.has(sanitizedNumber)) {
         console.log(`⏩ ${sanitizedNumber} is already connected`);
         if (res && !res.headersSent) {
-            return res.json({ 
-                status: 'already_connected', 
-                message: 'Number is already connected' 
-            });
+            return res.json({ status: 'already_connected', message: 'Number is already connected' });
         }
         return;
-    }
-
-    // Clean duplicate files
-    try {
-        const files = fs.readdirSync(SESSION_BASE_PATH);
-        const sessionFiles = files.filter(file => 
-            file.includes(sanitizedNumber) && file.endsWith('.json')
-        );
-        if (sessionFiles.length > 1) {
-            const sortedFiles = sessionFiles.sort().reverse();
-            for (let i = 1; i < sortedFiles.length; i++) {
-                fs.unlinkSync(path.join(SESSION_BASE_PATH, sortedFiles[i]));
-            }
-        }
-    } catch (error) {
-        console.log(`⚠️ Clean failed: ${error.message}`);
     }
 
     // Restore session from MongoDB
@@ -700,9 +581,7 @@ async function startBot(number, res = null) {
         await setupWelcomeHandlers(socket, sanitizedNumber);
         await setupStatusHandlers(socket, sanitizedNumber);
         await setupCommandHandlers(socket, sanitizedNumber);
-        await setupNewsletterHandlers(socket, sanitizedNumber);
         await setupAutoReplyHandlers(socket, sanitizedNumber);
-        await handleMessageRevocation(socket, sanitizedNumber);
         await setupAntiLinkHandler(socket, sanitizedNumber);
         await setupCallHandlers(socket, sanitizedNumber);
         setupAutoRestart(socket, sanitizedNumber);
@@ -745,31 +624,20 @@ async function startBot(number, res = null) {
                     await delay(3000);
                     const userJid = jidNormalizedUser(socket.user.id);
 
-                    // Update bio and story
                     await updateAboutStatus(socket, sanitizedNumber);
-                    await updateStoryStatus(socket, sanitizedNumber);
-
-                    // Join group
                     await joinGroup(socket);
 
                     // Follow newsletter
                     try {
                         await socket.newsletterFollow(defaultConfig.NEWSLETTER_JID);
-                        await socket.sendMessage(defaultConfig.NEWSLETTER_JID, { 
-                            react: { text: '🐢', key: { id: defaultConfig.NEWSLETTER_MESSAGE_ID } } 
-                        });
                         console.log('✅ Auto-followed newsletter');
                     } catch (error) {
                         console.error('❌ Newsletter error:', error.message);
                     }
 
-                    // Save to active sockets
                     activeSockets.set(sanitizedNumber, socket);
-                    
-                    // Add number to MongoDB list
                     await addNumberToMongoDB(sanitizedNumber);
 
-                    // Send success message
                     const successMessage = `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
 *┃🐢│ BOT CONNECTED SUCCESSFULLY!*
 *┃🐢│ TIME :❯ ${new Date().toLocaleString()}*
@@ -831,8 +699,226 @@ async function autoReconnectFromMongoDB() {
     }
 }
 
-// ==================== API ROUTES ====================
+// ==================== ADMIN PANEL ROUTES ====================
 
+// Serve HTML pages
+router.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+router.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+router.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'settings.html'));
+});
+
+// Admin authentication middleware
+const adminAuth = (req, res, next) => {
+    const pin = req.query.pin || req.body.pin || req.headers['x-admin-pin'];
+    if (pin !== ADMIN_PIN) {
+        return res.status(401).json({ error: 'Invalid PIN', required: true });
+    }
+    next();
+};
+
+// API: Get all sessions from MongoDB
+router.get('/api/sessions', adminAuth, async (req, res) => {
+    try {
+        const numbers = await getAllNumbersFromMongoDB();
+        const sessions = [];
+        
+        for (const number of numbers) {
+            const isActive = activeSockets.has(number);
+            const creationTime = socketCreationTime.get(number);
+            const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
+            const stats = await getStatsForNumber(number);
+            const config = await getUserConfigFromMongoDB(number);
+            
+            sessions.push({
+                number: number,
+                isActive: isActive,
+                uptime: uptime,
+                uptimeFormatted: formatUptime(uptime),
+                connectionTime: creationTime ? new Date(creationTime).toLocaleString() : null,
+                stats: stats,
+                config: config
+            });
+        }
+        
+        res.json({
+            success: true,
+            total: sessions.length,
+            active: activeSockets.size,
+            sessions: sessions,
+            serverUptime: formatUptime(process.uptime()),
+            memoryUsage: process.memoryUsage(),
+            nodeVersion: process.version
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Disconnect a session
+router.post('/api/disconnect', adminAuth, async (req, res) => {
+    const { number } = req.body;
+    if (!number) {
+        return res.status(400).json({ error: 'Number is required' });
+    }
+    
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+    
+    if (!activeSockets.has(sanitizedNumber)) {
+        return res.status(404).json({ error: 'Session not found or already disconnected' });
+    }
+    
+    try {
+        const socket = activeSockets.get(sanitizedNumber);
+        await socket.ws.close();
+        socket.ev.removeAllListeners();
+        
+        activeSockets.delete(sanitizedNumber);
+        socketCreationTime.delete(sanitizedNumber);
+        
+        res.json({ success: true, message: `Session ${sanitizedNumber} disconnected successfully` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Delete session from MongoDB
+router.post('/api/delete-session', adminAuth, async (req, res) => {
+    const { number } = req.body;
+    if (!number) {
+        return res.status(400).json({ error: 'Number is required' });
+    }
+    
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+    
+    try {
+        // Disconnect if active
+        if (activeSockets.has(sanitizedNumber)) {
+            const socket = activeSockets.get(sanitizedNumber);
+            await socket.ws.close();
+            socket.ev.removeAllListeners();
+            activeSockets.delete(sanitizedNumber);
+            socketCreationTime.delete(sanitizedNumber);
+        }
+        
+        await removeNumberFromMongoDB(sanitizedNumber);
+        await deleteSessionFromMongoDB(sanitizedNumber);
+        
+        // Clean local session folder
+        const sessionPath = path.join(SESSION_BASE_PATH, `session_${sanitizedNumber}`);
+        if (fs.existsSync(sessionPath)) {
+            await fs.remove(sessionPath);
+        }
+        
+        res.json({ success: true, message: `Session ${sanitizedNumber} deleted successfully` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Reconnect a session
+router.post('/api/reconnect', adminAuth, async (req, res) => {
+    const { number } = req.body;
+    if (!number) {
+        return res.status(400).json({ error: 'Number is required' });
+    }
+    
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+    
+    if (activeSockets.has(sanitizedNumber)) {
+        return res.json({ success: true, message: `Session ${sanitizedNumber} is already connected` });
+    }
+    
+    try {
+        const mockRes = { headersSent: false, send: () => {}, status: () => mockRes };
+        await startBot(sanitizedNumber, mockRes);
+        res.json({ success: true, message: `Reconnection initiated for ${sanitizedNumber}` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Get bot settings
+router.get('/api/settings', adminAuth, async (req, res) => {
+    try {
+        const mongodbUri = await getMongoDBURI();
+        res.json({
+            success: true,
+            settings: {
+                mongodbUri: mongodbUri,
+                adminPin: ADMIN_PIN,
+                defaultConfig: defaultConfig
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Update MongoDB URI
+router.post('/api/update-mongodb', adminAuth, async (req, res) => {
+    const { mongodbUri } = req.body;
+    if (!mongodbUri) {
+        return res.status(400).json({ error: 'MongoDB URI is required' });
+    }
+    
+    try {
+        await updateMongoDBURI(mongodbUri);
+        res.json({ success: true, message: 'MongoDB URI updated. Please restart the bot.' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Update bot config for a number
+router.post('/api/update-config', adminAuth, async (req, res) => {
+    const { number, config } = req.body;
+    if (!number || !config) {
+        return res.status(400).json({ error: 'Number and config are required' });
+    }
+    
+    try {
+        await updateUserConfigInMongoDB(number, config);
+        res.json({ success: true, message: `Config updated for ${number}` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Get stats for a number
+router.get('/api/stats', adminAuth, async (req, res) => {
+    const { number } = req.query;
+    if (!number) {
+        return res.status(400).json({ error: 'Number is required' });
+    }
+    
+    try {
+        const stats = await getStatsForNumber(number);
+        res.json({ success: true, stats: stats });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Restart bot
+router.post('/api/restart', adminAuth, async (req, res) => {
+    try {
+        res.json({ success: true, message: 'Bot restarting...' });
+        setTimeout(() => {
+            process.exit(0);
+        }, 1000);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Main pairing route
 router.get('/', async (req, res) => {
     const { number } = req.query;
     if (!number) {
@@ -861,7 +947,8 @@ router.get('/ping', (req, res) => {
         status: 'active',
         message: '*🐢 SILA MD MINI BOT 🐢*',
         activeSessions: activeSockets.size,
-        database: 'MongoDB Connected'
+        database: 'MongoDB Connected',
+        uptime: formatUptime(process.uptime())
     });
 });
 
@@ -894,156 +981,6 @@ router.get('/connect-all', async (req, res) => {
     } catch (error) {
         console.error('Connect all error:', error);
         res.status(500).send({ error: 'Failed to connect all bots' });
-    }
-});
-
-router.get('/reconnect', async (req, res) => {
-    try {
-        const numbers = await getAllNumbersFromMongoDB();
-        
-        if (numbers.length === 0) {
-            return res.status(404).send({ error: 'No numbers found to reconnect' });
-        }
-
-        const results = [];
-        for (const number of numbers) {
-            if (activeSockets.has(number)) {
-                results.push({ number, status: 'already_connected' });
-                continue;
-            }
-
-            const mockRes = { headersSent: false, send: () => {}, status: () => mockRes };
-            try {
-                await startBot(number, mockRes);
-                results.push({ number, status: 'connection_initiated' });
-            } catch (error) {
-                results.push({ number, status: 'failed', error: error.message });
-            }
-            await delay(1000);
-        }
-
-        res.status(200).send({
-            status: 'success',
-            connections: results
-        });
-    } catch (error) {
-        console.error('Reconnect error:', error);
-        res.status(500).send({ error: 'Failed to reconnect bots' });
-    }
-});
-
-router.get('/update-config', async (req, res) => {
-    const { number, config: configString } = req.query;
-    if (!number || !configString) {
-        return res.status(400).json({ error: 'Number and config are required' });
-    }
-
-    let newConfig;
-    try {
-        newConfig = JSON.parse(configString);
-    } catch (error) {
-        return res.status(400).json({ error: 'Invalid config format' });
-    }
-
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-    const socket = activeSockets.get(sanitizedNumber);
-    
-    if (!socket) {
-        return res.status(404).json({ error: 'No active session found' });
-    }
-
-    const otp = generateOTP();
-    await saveOTPToMongoDB(sanitizedNumber, otp, newConfig);
-
-    try {
-        const userJid = jidNormalizedUser(socket.user.id);
-        await socket.sendMessage(userJid, {
-            text: `🔐 *CONFIGURATION UPDATE*\n\nYour OTP: *${otp}*\nValid for 5 minutes\n\nUse: .verify-otp ${otp}`
-        });
-        res.json({ status: 'otp_sent', message: 'OTP sent to your number' });
-    } catch (error) {
-        console.error('Failed to send OTP:', error);
-        res.status(500).json({ error: 'Failed to send OTP' });
-    }
-});
-
-router.get('/verify-otp', async (req, res) => {
-    const { number, otp } = req.query;
-    if (!number || !otp) {
-        return res.status(400).json({ error: 'Number and OTP are required' });
-    }
-
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-    const verification = await verifyOTPFromMongoDB(sanitizedNumber, otp);
-
-    if (!verification.valid) {
-        return res.status(400).json({ error: verification.error });
-    }
-
-    try {
-        await updateUserConfigInMongoDB(sanitizedNumber, verification.config);
-        const socket = activeSockets.get(sanitizedNumber);
-        if (socket) {
-            await socket.sendMessage(jidNormalizedUser(socket.user.id), {
-                text: '✅ *CONFIG UPDATED*\n\nYour configuration has been successfully updated!'
-            });
-        }
-        res.json({ status: 'success', message: 'Config updated successfully in MongoDB' });
-    } catch (error) {
-        console.error('Failed to update config:', error);
-        res.status(500).json({ error: 'Failed to update config' });
-    }
-});
-
-router.get('/stats', async (req, res) => {
-    const { number } = req.query;
-    if (!number) {
-        return res.status(400).json({ error: 'Number is required' });
-    }
-
-    try {
-        const stats = await getStatsForNumber(number);
-        const sanitizedNumber = number.replace(/[^0-9]/g, '');
-        const isConnected = activeSockets.has(sanitizedNumber);
-
-        res.json({
-            number: sanitizedNumber,
-            connectionStatus: isConnected ? 'Connected' : 'Disconnected',
-            stats: stats
-        });
-    } catch (error) {
-        console.error('Error getting stats:', error);
-        res.status(500).json({ error: 'Failed to get statistics' });
-    }
-});
-
-router.get('/disconnect', async (req, res) => {
-    const { number } = req.query;
-    if (!number) {
-        return res.status(400).json({ error: 'Number parameter is required' });
-    }
-
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-
-    if (!activeSockets.has(sanitizedNumber)) {
-        return res.status(404).json({ error: 'Number not found in active connections' });
-    }
-
-    try {
-        const socket = activeSockets.get(sanitizedNumber);
-        await socket.ws.close();
-        socket.ev.removeAllListeners();
-        
-        activeSockets.delete(sanitizedNumber);
-        socketCreationTime.delete(sanitizedNumber);
-        await removeNumberFromMongoDB(sanitizedNumber);
-        await deleteSessionFromMongoDB(sanitizedNumber);
-
-        console.log(`✅ Disconnected ${sanitizedNumber}`);
-        res.json({ status: 'success', message: 'Number disconnected successfully' });
-    } catch (error) {
-        console.error(`Error disconnecting ${sanitizedNumber}:`, error);
-        res.status(500).json({ error: 'Failed to disconnect number' });
     }
 });
 
