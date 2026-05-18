@@ -308,6 +308,29 @@
       text-shadow: 0 0 5px rgba(0, 247, 255, 0.7);
     }
     
+    .timer {
+      font-size: 14px;
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-family: 'Orbitron', monospace;
+    }
+    
+    .timer.warning {
+      color: #ffaa00;
+      animation: blink 1s infinite;
+    }
+    
+    .timer.expired {
+      color: #ff2a6d;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
     .pulse {
       animation: pulse 2s infinite;
     }
@@ -413,10 +436,6 @@
   <div class="grid"></div>
   <div class="particles" id="particles"></div>
   
-  <audio id="background-music" autoplay loop>
-    <source src="https://files.catbox.moe/m3i466.mp3" type="audio/mpeg">
-  </audio>
-  
   <div class="container">
     <div class="main">
       <div class="box" id="box">
@@ -457,7 +476,7 @@
     let c = document.getElementById("number");
     let box = document.getElementById("box");
     let waitingMessageDiv = document.getElementById("waiting-message");
-    let backgroundMusic = document.getElementById("background-music");
+    let timerInterval = null;
 
     function createParticles() {
       const particlesContainer = document.getElementById('particles');
@@ -487,21 +506,81 @@
     
     createParticles();
 
+    // Start timer for 5 minutes (300 seconds)
+    function startTimer(seconds, codeDisplayElement) {
+      let remainingTime = seconds;
+      
+      if (timerInterval) clearInterval(timerInterval);
+      
+      timerInterval = setInterval(() => {
+        if (remainingTime <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          
+          // Code expired
+          const timerDiv = document.getElementById('code-timer');
+          if (timerDiv) {
+            timerDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> CODE EXPIRED! Please request a new one.';
+            timerDiv.classList.add('expired');
+            timerDiv.classList.remove('warning');
+          }
+          
+          // Disable copy functionality
+          const codeDisplay = document.getElementById('code-display');
+          if (codeDisplay) {
+            codeDisplay.style.opacity = '0.5';
+            codeDisplay.style.cursor = 'not-allowed';
+            codeDisplay.onclick = null;
+          }
+          
+          // Show expired message
+          const pairDiv = document.getElementById('pair');
+          if (pairDiv && !pairDiv.querySelector('.status-success')) {
+            pairDiv.innerHTML += `
+              <div class="status-error" style="margin-top: 10px;">
+                <i class="fas fa-hourglass-end"></i> Code has expired (5 minutes). Please submit your number again.
+              </div>
+            `;
+          }
+        } else {
+          const minutes = Math.floor(remainingTime / 60);
+          const seconds = remainingTime % 60;
+          const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          
+          const timerDiv = document.getElementById('code-timer');
+          if (timerDiv) {
+            timerDiv.innerHTML = `<i class="fas fa-hourglass-half"></i> CODE EXPIRES IN: ${timeString}`;
+            
+            if (remainingTime <= 60) {
+              timerDiv.classList.add('warning');
+            } else {
+              timerDiv.classList.remove('warning');
+            }
+          }
+        }
+        remainingTime--;
+      }, 1000);
+    }
+
     async function Copy() {
-      let text = document.getElementById("copy-value").innerText;
-      let codeDisplay = document.getElementById("code-display");
+      const text = document.getElementById("copy-value").innerText;
+      const codeDisplay = document.getElementById("code-display");
+      
+      // Check if code is expired
+      const timerDiv = document.getElementById('code-timer');
+      if (timerDiv && timerDiv.classList.contains('expired')) {
+        return;
+      }
+      
       await navigator.clipboard.writeText(text);
       
+      const originalHTML = codeDisplay.innerHTML;
       codeDisplay.innerHTML = '<i class="fas fa-check" style="color:#00ff00; margin-right:8px;"></i> COPIED!';
       codeDisplay.style.background = 'rgba(0, 255, 0, 0.1)';
       codeDisplay.style.border = '1px solid rgba(0, 255, 0, 0.3)';
       
       setTimeout(() => {
-        codeDisplay.innerHTML = `
-          <i class="fas fa-copy" style="color:var(--secondary);"></i>
-          <span class="code-text">CODE:❯ </span>
-          <span class="code-value" id="copy-value">${text}</span>
-        `;
+        codeDisplay.innerHTML = originalHTML;
         codeDisplay.style.background = 'rgba(0, 0, 0, 0.3)';
         codeDisplay.style.border = '1px solid var(--glass-border)';
       }, 2000);
@@ -511,6 +590,13 @@
 
     b.addEventListener("click", async (e) => {
       e.preventDefault();
+      
+      // Clear previous timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
       if (!c.value) {
         a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-circle"></i> Enter your WhatsApp number with country code.</div>';
         return;
@@ -531,17 +617,24 @@
         waitingMessageDiv.style.display = "none";
         
         if (data.code) {
-          // New pairing code
+          // New pairing code - Start 5 minute timer (300 seconds)
           a.innerHTML = `
             <div class="code-display pulse" id="code-display" onclick="Copy()">
               <i class="fas fa-copy" style="color:var(--secondary);"></i>
               <span class="code-text">CODE:</span>
               <span class="code-value" id="copy-value">${data.code}</span>
             </div>
+            <div class="timer" id="code-timer">
+              <i class="fas fa-hourglass-half"></i> CODE EXPIRES IN: 5:00
+            </div>
             <div class="status-success" style="margin-top: 10px; font-size: 12px;">
-              <i class="fas fa-info-circle"></i> Code expires in 20 seconds!
+              <i class="fas fa-info-circle"></i> Code expires in 5 minutes! Use it before it expires.
             </div>
           `;
+          
+          // Start the 5 minute countdown
+          startTimer(300, document.getElementById('code-display'));
+          
         } else if (data.status === 'already_connected') {
           a.innerHTML = `
             <div class="status-success">
@@ -576,18 +669,6 @@
           a.innerHTML = '<div class="status-error"><i class="fas fa-exclamation-triangle"></i> Network error. Please check your connection and try again.</div>';
         }
       }
-    });
-
-    // Auto-play music with user interaction
-    document.addEventListener('DOMContentLoaded', function() {
-      backgroundMusic.volume = 0.3;
-      
-      // Try to play music after user clicks anywhere
-      document.body.addEventListener('click', function() {
-        backgroundMusic.play().catch(e => {
-          console.log("Audio play failed:", e);
-        });
-      }, { once: true });
     });
   </script>
 </body>
