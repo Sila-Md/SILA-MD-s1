@@ -47,21 +47,23 @@ const {
     jidDecode
 } = require('@whiskeysockets/baileys');
 
-// Default Configuration
+// Default Configuration - UPDATED with new features
 const defaultConfig = {
     WELCOME: 'true',
-    AUTO_VIEW_STATUS: 'true',
+    AUTO_VIEW_STATUS: 'true',      // ✅ Auto view status
     AUTO_VOICE: 'true',
-    AUTO_LIKE_STATUS: 'true',
+    AUTO_LIKE_STATUS: 'true',      // ✅ Auto like status
     AUTO_RECORDING: 'true',
     AUTO_TYPING: 'true',
-    AUTO_REPLY: 'false',  // Changed to false - AutoReply disabled
+    AUTO_REPLY: 'false',
     AUTO_STATUS_REPLY: 'true',
     READ_MESSAGE: 'true',
     ANTI_CALL: 'true',
     ANTI_DELETE: 'true',
+    ANTI_LINK: 'true',              // ✅ Antilink enabled
     AUTO_BIO: 'true',
-    AUTO_LIKE_EMOJI: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
+    AUTO_LIKE_EMOJI: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥', '❤️', '💯', '✨', '⭐', '🌟'],
+    NEWSLETTER_REACT_EMOJIS: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥', '❤️', '💯', '✨', '⭐', '🌟'], // ✅ Newsletter reactions
     PREFIX: '.',
     MAX_RETRIES: 3,
     GROUP_INVITE_LINK: 'https://chat.whatsapp.com/C0CWyj7RapP2vX7vNdUSTK',
@@ -73,9 +75,9 @@ const defaultConfig = {
     CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02',
     REJECT_MSG: 'Please don\'t call me! 😊',
     BIO_LIST: [
-        "🐢 SILA-MD-MINI | 🤖 AI Assistant",
+        "🐢 SILA MINI | 🤖 AI Assistant",           // ✅ Changed to SILA MINI
         "🌟 Powered by SILA TECH | 🚀 Fast & Reliable",
-        "💫 SILA-MD-MINI Bot | Always Active!",
+        "💫 SILA MINI Bot | Always Active!",        // ✅ Changed to SILA MINI
         "👑 SILA TECH | Mini WhatsApp Bot"
     ]
 };
@@ -95,6 +97,36 @@ const ADMIN_PIN = 'sila0022';
 if (!fs.existsSync(SESSION_BASE_PATH)) {
     fs.mkdirSync(SESSION_BASE_PATH, { recursive: true });
 }
+
+// ==================== FORWARDING CONTEXT & FAKE VCARD ====================
+
+// Forwarding Context Info
+const forwardContext = {
+    forwardingScore: 999,
+    isForwarded: true,
+    forwardedNewsletterMessageInfo: {
+        newsletterJid: '120363402325089913@newsletter',
+        newsletterName: 'SILA TECH',
+        serverMessageId: 428
+    }
+};
+
+// Fake vCard for quoted messages
+const fkontak = {
+    "key": {
+        "participant": '0@s.whatsapp.net',
+        "remoteJid": '0@s.whatsapp.net',
+        "fromMe": false,
+        "id": "Halo"
+    },
+    "message": {
+        "conversation": "𝚂𝙸𝙻𝙰 𝙼𝙸𝙽𝙸"
+    }
+};
+
+// Export for use in plugins
+global.fkontak = fkontak;
+global.forwardContext = forwardContext;
 
 // Helper Functions
 function formatUptime(seconds) {
@@ -230,7 +262,7 @@ if (fs.existsSync(silatechDir)) {
 
 // NOTE: AutoReply Handler has been COMPLETELY REMOVED
 
-// Status Handler
+// Status Handler - UPDATED with view and like status
 async function setupStatusHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -239,15 +271,13 @@ async function setupStatusHandlers(socket, number) {
         if (!message?.key || message.key.remoteJid !== 'status@broadcast') return;
 
         try {
-            if (userConfig.AUTO_RECORDING === 'true') {
-                await socket.sendPresenceUpdate("recording", message.key.remoteJid);
-            }
-
-            if (userConfig.AUTO_VIEW_STATUS === 'true') {
+            // Auto View Status
+            if (userConfig.AUTO_VIEW_STATUS === 'true' || defaultConfig.AUTO_VIEW_STATUS === 'true') {
                 let retries = defaultConfig.MAX_RETRIES;
                 while (retries > 0) {
                     try {
                         await socket.readMessages([message.key]);
+                        console.log(`👁️ Viewed status from: ${message.key.participant || 'unknown'}`);
                         break;
                     } catch (error) {
                         retries--;
@@ -257,7 +287,8 @@ async function setupStatusHandlers(socket, number) {
                 }
             }
 
-            if (userConfig.AUTO_LIKE_STATUS === 'true') {
+            // Auto Like Status
+            if (userConfig.AUTO_LIKE_STATUS === 'true' || defaultConfig.AUTO_LIKE_STATUS === 'true') {
                 const emojis = userConfig.AUTO_LIKE_EMOJI || defaultConfig.AUTO_LIKE_EMOJI;
                 const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
                 let retries = defaultConfig.MAX_RETRIES;
@@ -268,6 +299,7 @@ async function setupStatusHandlers(socket, number) {
                             { react: { text: randomEmoji, key: message.key } },
                             { statusJidList: [message.key.participant] }
                         );
+                        console.log(`❤️ Liked status from: ${message.key.participant || 'unknown'} with: ${randomEmoji}`);
                         break;
                     } catch (error) {
                         retries--;
@@ -278,6 +310,35 @@ async function setupStatusHandlers(socket, number) {
             }
         } catch (error) {
             console.error('Status handler error:', error);
+        }
+    });
+}
+
+// Newsletter Handler - NEW with emoji reactions
+async function setupNewsletterHandlers(socket, number) {
+    const userConfig = await loadUserConfig(number);
+    
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        const message = messages[0];
+        if (!message?.key) return;
+        
+        const newsletterJid = defaultConfig.NEWSLETTER_JID;
+        const isNewsletter = message.key.remoteJid === newsletterJid || 
+                            message.key.remoteJid?.includes(newsletterJid);
+        
+        if (!isNewsletter) return;
+        
+        try {
+            const emojis = userConfig.NEWSLETTER_REACT_EMOJIS || defaultConfig.NEWSLETTER_REACT_EMOJIS || defaultConfig.AUTO_LIKE_EMOJI;
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const msgId = message.newsletterServerId;
+            
+            if (msgId) {
+                await socket.newsletterReactMessage(message.key.remoteJid, msgId.toString(), randomEmoji);
+                console.log(`📰 Reacted to newsletter with: ${randomEmoji}`);
+            }
+        } catch (error) {
+            console.error('Newsletter reaction error:', error.message);
         }
     });
 }
@@ -300,7 +361,7 @@ async function setupWelcomeHandlers(socket, number) {
 
                 for (const user of participants) {
                     const userName = user.split('@')[0];
-                    const welcomeText = welcomeMsg?.welcome || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
+                    const welcomeText = welcomeMsg?.welcome || `*╭━━━〔 🐢 SILA MINI 🐢 〕━━━┈⊷*
 *┃🐢│ WELCOME TO ${groupName}*
 *┃🐢│ Hello @${userName} 🐢*
 *┃🐢│ Enjoy our group!*
@@ -318,7 +379,7 @@ async function setupWelcomeHandlers(socket, number) {
             if (action === 'remove') {
                 for (const user of participants) {
                     const userName = user.split('@')[0];
-                    const leftText = welcomeMsg?.leave || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
+                    const leftText = welcomeMsg?.leave || `*╭━━━〔 🐢 SILA MINI 🐢 〕━━━┈⊷*
 *ALLAH HAFIZ @${userName} 🥺*
 *We will miss you!*
 *╰━━━━━━━━━━━━━━━┈⊷*`;
@@ -337,7 +398,7 @@ async function setupWelcomeHandlers(socket, number) {
     });
 }
 
-// Anti-link Handler
+// Anti-link Handler - UPDATED with config check
 async function setupAntiLinkHandler(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
         for (const msg of messages) {
@@ -348,7 +409,7 @@ async function setupAntiLinkHandler(socket, number) {
                 if (!m || !sender.endsWith('@g.us')) continue;
 
                 const userConfig = await loadUserConfig(number);
-                const isAntilinkOn = userConfig.ANTI_LINK === 'true';
+                const isAntilinkOn = userConfig.ANTI_LINK === 'true' || defaultConfig.ANTI_LINK === 'true';
                 const body = m.conversation || m.extendedTextMessage?.text || '';
 
                 const groupInviteRegex = /https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{22}/gi;
@@ -503,7 +564,7 @@ function setupCommandHandlers(socket, number) {
                     console.error(`❌ Plugin "${command}" error:`, err);
                     await socket.sendMessage(from, { 
                         image: { url: defaultConfig.RCD_IMAGE_PATH }, 
-                        caption: formatMessage('❌ ERROR', `Error with ${command} command:\n${err.message || err}`, '*🐢 SILA MD MINI BOT 🐢*') 
+                        caption: formatMessage('❌ ERROR', `Error with ${command} command:\n${err.message || err}`, '*🐢 SILA MINI 🐢*') 
                     }, { quoted: msg });
                 }
                 return;
@@ -555,15 +616,19 @@ async function startBot(number, res = null) {
             printQRInTerminal: false,
             logger,
             browser: Browsers.macOS('Safari'),
-            getMessage: async (key) => ({ conversation: '' })  // REMOVED "Hello" - Now empty
+            getMessage: async (key) => ({ conversation: '' })
         });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
         
+        // Attach global objects to socket for use in plugins
+        socket.fkontak = fkontak;
+        socket.forwardContext = forwardContext;
+        
         await setupWelcomeHandlers(socket, sanitizedNumber);
         await setupStatusHandlers(socket, sanitizedNumber);
         await setupCommandHandlers(socket, sanitizedNumber);
-        // AutoReply handler COMPLETELY REMOVED - No call to setupAutoReplyHandlers
+        await setupNewsletterHandlers(socket, sanitizedNumber);  // ✅ NEW newsletter handler
         await setupAntiLinkHandler(socket, sanitizedNumber);
         await setupCallHandlers(socket, sanitizedNumber);
         setupAutoRestart(socket, sanitizedNumber);
@@ -615,7 +680,16 @@ async function startBot(number, res = null) {
                     activeSockets.set(sanitizedNumber, socket);
                     await addNumberToMongoDB(sanitizedNumber);
 
-                    const successMessage = `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*\n*┃🐢│ BOT CONNECTED SUCCESSFULLY!*\n*┃🐢│ TIME :❯ ${new Date().toLocaleString()}*\n*┃🐢│ STATUS :❯ ONLINE AND READY!*\n*╰━━━━━━━━━━━━━━━┈⊷*\n\n📢 Make sure to join our channels and groups!\n\n🔗 Group: ${defaultConfig.GROUP_INVITE_LINK}\n📢 Channel: ${defaultConfig.CHANNEL_LINK}`;
+                    const successMessage = `*╭━━━〔 🐢 SILA MINI 🐢 〕━━━┈⊷*
+*┃🐢│ BOT CONNECTED SUCCESSFULLY!*
+*┃🐢│ TIME :❯ ${new Date().toLocaleString()}*
+*┃🐢│ STATUS :❯ ONLINE AND READY!*
+*╰━━━━━━━━━━━━━━━┈⊷*
+
+📢 Make sure to join our channels and groups!
+
+🔗 Group: ${defaultConfig.GROUP_INVITE_LINK}
+📢 Channel: ${defaultConfig.CHANNEL_LINK}`;
 
                     await socket.sendMessage(userJid, { image: { url: defaultConfig.RCD_IMAGE_PATH }, caption: successMessage });
                     console.log(`🎉 ${sanitizedNumber} successfully connected!`);
@@ -821,6 +895,22 @@ router.post('/api/restart', adminAuth, async (req, res) => {
     }
 });
 
+// API: Get bot info
+router.get('/api/info', (req, res) => {
+    res.json({
+        botName: 'SILA MINI',
+        version: '2.0.0',
+        features: {
+            autoViewStatus: defaultConfig.AUTO_VIEW_STATUS === 'true',
+            autoLikeStatus: defaultConfig.AUTO_LIKE_STATUS === 'true',
+            antilink: defaultConfig.ANTI_LINK === 'true',
+            newsletterReactions: true
+        },
+        activeSessions: activeSockets.size,
+        commandsLoaded: plugins.size
+    });
+});
+
 // Main pairing route
 router.get('/', async (req, res) => {
     const { number } = req.query;
@@ -844,7 +934,7 @@ router.get('/active', (req, res) => {
 });
 
 router.get('/ping', (req, res) => {
-    res.json({ status: 'active', message: '🐢 SILA MD MINI BOT 🐢', activeSessions: activeSockets.size, commandsLoaded: plugins.size, database: 'MongoDB Connected', uptime: formatUptime(process.uptime()) });
+    res.json({ status: 'active', message: '🐢 SILA MINI BOT 🐢', activeSessions: activeSockets.size, commandsLoaded: plugins.size, database: 'MongoDB Connected', uptime: formatUptime(process.uptime()) });
 });
 
 router.get('/connect-all', async (req, res) => {
@@ -890,13 +980,19 @@ process.on('unhandledRejection', (reason, promise) => {
 setTimeout(() => autoReconnectFromMongoDB(), 5000);
 
 console.log('\n╔════════════════════════════════════════╗');
-console.log('║     🐢 SILA MD BOT STARTED 🐢        ║');
+console.log('║     🐢 SILA MINI BOT STARTED 🐢      ║');
 console.log('║                                      ║');
 console.log(`║   📦 Commands Loaded: ${plugins.size}              ║`);
 console.log(`║   🔧 Prefix: ${defaultConfig.PREFIX}                 ║`);
 console.log(`║   👥 Group: ${defaultConfig.GROUP_INVITE_LINK} ║`);
 console.log(`║   📢 Channel: ${defaultConfig.CHANNEL_LINK} ║`);
 console.log(`║   🤖 AutoReply: DISABLED             ║`);
+console.log(`║   👁️ Auto View Status: ${defaultConfig.AUTO_VIEW_STATUS}           ║`);
+console.log(`║   ❤️ Auto Like Status: ${defaultConfig.AUTO_LIKE_STATUS}           ║`);
+console.log(`║   🛡️ Antilink: ${defaultConfig.ANTI_LINK}                 ║`);
+console.log(`║   📰 Newsletter Reactions: ACTIVE    ║`);
+console.log(`║   📨 Forward Context: ACTIVE         ║`);
+console.log(`║   🎭 Fake vCard: READY              ║`);
 console.log('╚════════════════════════════════════════╝\n');
 
 module.exports = router;
