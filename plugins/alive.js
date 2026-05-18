@@ -1,48 +1,32 @@
+// plugins/alive.js
 module.exports = {
-  command: "alive",
-  description: "Check if bot is running",
-  category: "info",
+    command: 'alive',
+    description: 'Check if bot is active',
+    alias: ['status', 'runtime'],
+    category: 'utility',
+    async execute(socket, msg, args, botNumber) {
+        const from = msg.key.remoteJid;
+        const uptime = process.uptime();
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        const seconds = Math.floor(uptime % 60);
+        
+        const defaultConfig = {
+            PREFIX: '.',
+            RCD_IMAGE_PATH: 'https://i.ibb.co/4RM2GC9F/Sila-mini.jpg'
+        };
+        
+        const aliveMsg = `*╭━━〔 🐢 ᴀʟɪᴠᴇ 🐢 〕━━┈⊷*
+*┃🐢│ • ʙᴏᴛ: ꜱɪʟᴀ ᴍɪɴɪ*
+*┃🐢│ • ꜱᴛᴀᴛᴜꜱ: ✅ ᴀᴄᴛɪᴠᴇ*
+*┃🐢│ • ᴘʀᴇꜰɪx: ${defaultConfig.PREFIX}*
+*┃🐢│ • ʀᴜɴᴛɪᴍᴇ: ${hours}h ${minutes}m ${seconds}s*
+*╰━━━━━━━━━━━━━━━┈⊷*
+> 🐢 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`;
 
-  async execute(sock, msg) {
-    try {
-      const jid = msg.key.remoteJid;
-      const sender = msg.key.participant || msg.key.remoteJid;
-      const jidName = sender.split("@")[0];
-
-      const date = new Date().toLocaleDateString();
-      const time = new Date().toLocaleTimeString();
-      const speed = Math.floor(Math.random() * 90 + 10);
-
-      const caption = `*HELLO ☺️*
-      *HOW ARE YOU? 😇*
-      *I HOPE YOU ARE DOING WELL INSHALLAH 🤲*
-      *I AM SILA MD MINI BOT USER ☺️*
-      
-      *🐢 OWNER INFO 🐢*
-255612491554/Sila/
-
-*🐢 SUPPORT CHANNEL 🐢*
-https://whatsapp.com/channel/0029VbBPxQTJUM2WCZLB6j28
-
-*🐢 SUPPORT GROUP 🐢*
-https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks
-`;
-
-      // Envoyer simplement le message avec l'image
-      await sock.sendMessage(
-        jid,
-        {
-          image: { url: 'https://files.catbox.moe/90i7j4.png' },
-          caption: caption
-        },
-        { quoted: msg }
-      );
-
-    } catch (err) {
-      console.error("❌ Error in alive command:", err);
-      await sock.sendMessage(msg.key.remoteJid, {
-        text: "❌ Error checking bot status",
-      });
+        await socket.sendMessage(from, { 
+            image: { url: defaultConfig.RCD_IMAGE_PATH },
+            caption: aliveMsg
+        }, { quoted: msg });
     }
-  },
 };
