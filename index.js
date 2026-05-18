@@ -55,7 +55,7 @@ const defaultConfig = {
     AUTO_LIKE_STATUS: 'true',
     AUTO_RECORDING: 'true',
     AUTO_TYPING: 'true',
-    AUTO_REPLY: 'true',
+    AUTO_REPLY: 'false',  // Changed to false - AutoReply disabled
     AUTO_STATUS_REPLY: 'true',
     READ_MESSAGE: 'true',
     ANTI_CALL: 'true',
@@ -228,53 +228,7 @@ if (fs.existsSync(silatechDir)) {
 
 // ==================== HANDLERS ====================
 
-// Auto Reply Handler
-async function setupAutoReplyHandlers(socket, number) {
-    const userConfig = await loadUserConfig(number);
-    
-    socket.ev.on('messages.upsert', async ({ messages }) => {
-        try {
-            const msg = messages[0];
-            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
-
-            let text = '';
-            if (msg.message.conversation) {
-                text = msg.message.conversation.toLowerCase().trim();
-            } else if (msg.message.extendedTextMessage?.text) {
-                text = msg.message.extendedTextMessage.text.toLowerCase().trim();
-            }
-
-            if (!text || userConfig.AUTO_REPLY !== 'true') return;
-
-            const autoReplies = await getAutoRepliesFromMongoDB(number);
-            
-            for (const [trigger, reply] of Object.entries(autoReplies)) {
-                if (text === trigger.toLowerCase()) {
-                    await socket.sendMessage(msg.key.remoteJid, { text: reply }, { quoted: msg });
-                    console.log(`🤖 Auto-replied to "${trigger}" for ${number}`);
-                    break;
-                }
-            }
-            
-            const defaultReplies = {
-                'hi': 'Hello! 👋 How can I help you?',
-                'hello': 'Hi there! 😊 Use .menu to see commands',
-                'mambo': 'Poa sana! 👋 Nikusaidie kuhusu?',
-                'habari': 'Nzuri sana! 👋 Habari yako?',
-                'thanks': 'You\'re welcome! 😊',
-                'asante': 'Karibu sana! 😊',
-                'bot': 'Yes, I am SILA MD MINI BOT! 🤖'
-            };
-            
-            if (defaultReplies[text] && userConfig.AUTO_REPLY === 'true') {
-                await socket.sendMessage(msg.key.remoteJid, { text: defaultReplies[text] }, { quoted: msg });
-                console.log(`🤖 Auto-replied to "${text}" for ${number}`);
-            }
-        } catch (err) {
-            console.error('Auto-reply error:', err);
-        }
-    });
-}
+// NOTE: AutoReply Handler has been COMPLETELY REMOVED
 
 // Status Handler
 async function setupStatusHandlers(socket, number) {
@@ -555,7 +509,7 @@ function setupCommandHandlers(socket, number) {
                 return;
             }
             
-            // COMMAND NOT FOUND - Only show if plugin doesn't exist
+            // COMMAND NOT FOUND
             await socket.sendMessage(from, { 
                 text: `❌ Command "${command}" not found.\n\n📋 Type *${defaultConfig.PREFIX}menu* to see available commands.` 
             }, { quoted: msg });
@@ -601,7 +555,7 @@ async function startBot(number, res = null) {
             printQRInTerminal: false,
             logger,
             browser: Browsers.macOS('Safari'),
-            getMessage: async (key) => ({ conversation: 'Hello' })
+            getMessage: async (key) => ({ conversation: '' })  // REMOVED "Hello" - Now empty
         });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
@@ -609,7 +563,7 @@ async function startBot(number, res = null) {
         await setupWelcomeHandlers(socket, sanitizedNumber);
         await setupStatusHandlers(socket, sanitizedNumber);
         await setupCommandHandlers(socket, sanitizedNumber);
-        await setupAutoReplyHandlers(socket, sanitizedNumber);
+        // AutoReply handler COMPLETELY REMOVED - No call to setupAutoReplyHandlers
         await setupAntiLinkHandler(socket, sanitizedNumber);
         await setupCallHandlers(socket, sanitizedNumber);
         setupAutoRestart(socket, sanitizedNumber);
@@ -942,6 +896,7 @@ console.log(`║   📦 Commands Loaded: ${plugins.size}              ║`);
 console.log(`║   🔧 Prefix: ${defaultConfig.PREFIX}                 ║`);
 console.log(`║   👥 Group: ${defaultConfig.GROUP_INVITE_LINK} ║`);
 console.log(`║   📢 Channel: ${defaultConfig.CHANNEL_LINK} ║`);
+console.log(`║   🤖 AutoReply: DISABLED             ║`);
 console.log('╚════════════════════════════════════════╝\n');
 
 module.exports = router;
