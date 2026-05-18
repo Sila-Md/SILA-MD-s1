@@ -12,19 +12,19 @@
   "env": {
     "GITHUB_TOKEN": {
       "description": "Your GitHub Personal Access Token",
-      "required": true
+      "required": false
     },
     "GITHUB_OWNER": {
       "description": "Your GitHub username",
-      "required": true
+      "required": false
     },
     "GITHUB_REPO": {
       "description": "Your repository name",
-      "required": true
+      "required": false
     },
     "OWNER_NUMBER": {
       "description": "Your WhatsApp number with country code",
-      "required": true
+      "required": false
     }
   },
   "formation": {
