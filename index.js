@@ -63,7 +63,7 @@ const defaultConfig = {
     AUTO_LIKE_EMOJI: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥'],
     PREFIX: '.',
     MAX_RETRIES: 3,
-    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/IdGNaKt80DEBqirc2ek4ks',
+    GROUP_INVITE_LINK: 'https://chat.whatsapp.com/C0CWyj7RapP2vX7vNdUSTK',
     RCD_IMAGE_PATH: 'https://i.ibb.co/4RM2GC9F/Sila-mini.jpg',
     NEWSLETTER_JID: '120363402325089913@newsletter',
     NEWSLETTER_MESSAGE_ID: '428',
@@ -130,33 +130,366 @@ async function loadUserConfig(number) {
     }
 }
 
-async function updateUserConfig(number, newConfig) {
-    try {
-        const sanitizedNumber = number.replace(/[^0-9]/g, '');
-        await updateUserConfigInMongoDB(sanitizedNumber, newConfig);
-        console.log(`✅ Updated config for ${sanitizedNumber}`);
-    } catch (error) {
-        console.log(`❌ Config update failed: ${error.message}`);
-    }
+// ==================== LOAD PLUGINS WITH LOGGING ====================
+
+console.log('\n╔════════════════════════════════════════╗');
+console.log('║     📦 LOADING PLUGINS SYSTEM        ║');
+console.log('╚════════════════════════════════════════╝\n');
+
+const plugins = new Map();
+const pluginDir = path.join(__dirname, 'plugins');
+
+// Create plugins directory if it doesn't exist
+if (!fs.existsSync(pluginDir)) {
+    fs.mkdirSync(pluginDir, { recursive: true });
+    console.log('📁 Created plugins directory');
 }
 
-// Auto Bio Setup
-async function updateAboutStatus(socket, number) {
-    try {
-        const userConfig = await loadUserConfig(number);
-        if (userConfig.AUTO_BIO !== 'true') return;
-        
-        const bioList = userConfig.BIO_LIST || defaultConfig.BIO_LIST;
-        const randomBio = bioList[Math.floor(Math.random() * bioList.length)];
-        
-        await socket.updateProfileStatus(randomBio);
-        console.log(`✅ Bio updated for ${number}: ${randomBio}`);
-    } catch (error) {
-        console.error('❌ Failed to update bio:', error);
+// Load plugins from plugins folder
+if (fs.existsSync(pluginDir)) {
+    const files = fs.readdirSync(pluginDir).filter(file => file.endsWith('.js'));
+    
+    console.log(`🔍 Found ${files.length} plugin files\n`);
+    
+    let loadedCount = 0;
+    let failedCount = 0;
+    
+    for (const file of files) {
+        try {
+            const plugin = require(path.join(pluginDir, file));
+            if (plugin.command) {
+                plugins.set(plugin.command, plugin);
+                loadedCount++;
+                console.log(`   ✅ LOADED: ${plugin.command} → ${file}`);
+                if (plugin.description) {
+                    console.log(`      📝 Description: ${plugin.description}`);
+                }
+                if (plugin.alias && plugin.alias.length > 0) {
+                    console.log(`      🔄 Aliases: ${plugin.alias.join(', ')}`);
+                }
+            } else {
+                console.log(`   ⚠️ SKIPPED: ${file} (no command export)`);
+                failedCount++;
+            }
+        } catch (error) {
+            failedCount++;
+            console.log(`   ❌ FAILED: ${file} → ${error.message}`);
+        }
     }
+    
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log(`║  ✅ Loaded: ${loadedCount} commands`);
+    console.log(`║  ❌ Failed: ${failedCount} files`);
+    console.log(`║  📦 Total: ${plugins.size} active commands`);
+    console.log('╚════════════════════════════════════════╝\n');
+    
+    // List all loaded commands
+    if (plugins.size > 0) {
+        console.log('📋 Available Commands:');
+        const commands = Array.from(plugins.keys()).sort();
+        const columns = 4;
+        let line = '';
+        commands.forEach((cmd, i) => {
+            line += `  .${cmd.padEnd(12)}`;
+            if ((i + 1) % columns === 0 || i === commands.length - 1) {
+                console.log(line);
+                line = '';
+            }
+        });
+        console.log('');
+    }
+} else {
+    console.log('⚠️ Plugins directory not found!');
+    console.log('📁 Created plugins directory at:', pluginDir);
 }
 
-// Status Handlers
+// Also load from silatech directory (legacy support)
+const silatechDir = path.join(__dirname, 'silatech');
+if (fs.existsSync(silatechDir)) {
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log('║     📦 LOADING SILATECH MODULES      ║');
+    console.log('╚════════════════════════════════════════╝\n');
+    
+    const silatechFiles = fs.readdirSync(silatechDir).filter(file => file.endsWith('.js'));
+    let silatechLoaded = 0;
+    
+    for (const file of silatechFiles) {
+        try {
+            require(path.join(silatechDir, file));
+            silatechLoaded++;
+            console.log(`   ✅ LOADED: ${file}`);
+        } catch (error) {
+            console.log(`   ❌ FAILED: ${file} → ${error.message}`);
+        }
+    }
+    console.log(`\n✅ Loaded ${silatechLoaded} silatech modules\n`);
+}
+
+// ==================== COMMAND HANDLER WITH PING ====================
+
+function setupCommandHandlers(socket, number) {
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        try {
+            const msg = messages[0];
+            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
+
+            let command = null;
+            let args = [];
+            let from = msg.key.remoteJid;
+
+            if (msg.message.conversation || msg.message.extendedTextMessage?.text) {
+                const text = (msg.message.conversation || msg.message.extendedTextMessage.text || '').trim();
+                const userConfig = await loadUserConfig(number);
+                const prefix = userConfig.PREFIX || defaultConfig.PREFIX;
+                
+                if (text.startsWith(prefix)) {
+                    const parts = text.slice(prefix.length).trim().split(/\s+/);
+                    command = parts[0].toLowerCase();
+                    args = parts.slice(1);
+                }
+            }
+
+            if (!command) return;
+
+            console.log(`📝 Command received: ${command} from ${from} on bot ${number}`);
+
+            // ============ PING COMMAND ============
+            if (command === 'ping') {
+                const start = Date.now();
+                await socket.sendMessage(from, { text: '🏓 Pinging...' }, { quoted: msg });
+                const end = Date.now();
+                const ping = end - start;
+                
+                const uptime = process.uptime();
+                const uptimeString = formatUptime(uptime);
+                
+                await socket.sendMessage(from, { 
+                    text: `*🏓 PONG!*\n\n📡 *Ping:* ${ping}ms\n🤖 *Bot:* Active\n💾 *Database:* MongoDB Connected\n⏱️ *Uptime:* ${uptimeString}\n🕐 *Time:* ${new Date().toLocaleString()}\n\n> 🐢 SILA MD MINI BOT`
+                }, { quoted: msg });
+                console.log(`✅ Ping command executed: ${ping}ms`);
+                return;
+            }
+            
+            // ============ STATS COMMAND ============
+            if (command === 'stats' || command === 'status') {
+                const activeCount = activeSockets.size;
+                const memoryUsage = process.memoryUsage();
+                const uptime = process.uptime();
+                
+                let statsText = `*📊 BOT STATISTICS*\n\n`;
+                statsText += `🤖 *Active Sessions:* ${activeCount}\n`;
+                statsText += `⏱️ *Uptime:* ${formatUptime(uptime)}\n`;
+                statsText += `💾 *Memory Usage:* ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n`;
+                statsText += `📡 *Node Version:* ${process.version}\n`;
+                statsText += `🔧 *Commands Loaded:* ${plugins.size}\n`;
+                statsText += `🕐 *Time:* ${new Date().toLocaleString()}\n\n`;
+                statsText += `> 🐢 SILA MD MINI BOT`;
+                
+                await socket.sendMessage(from, { text: statsText }, { quoted: msg });
+                console.log(`✅ Stats command executed`);
+                return;
+            }
+            
+            // ============ CONNECTIONS COMMAND ============
+            if (command === 'connections' || command === 'sessions') {
+                const numbers = Array.from(activeSockets.keys());
+                
+                if (numbers.length === 0) {
+                    await socket.sendMessage(from, { text: '❌ No active connections found.' }, { quoted: msg });
+                    return;
+                }
+                
+                let connectionsText = `*📱 ACTIVE CONNECTIONS*\n\n`;
+                for (const num of numbers) {
+                    const creationTime = socketCreationTime.get(num);
+                    const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
+                    connectionsText += `📱 *+${num}*\n`;
+                    connectionsText += `   ⏱️ Uptime: ${formatUptime(uptime)}\n\n`;
+                }
+                connectionsText += `📊 *Total:* ${numbers.length} active\n`;
+                connectionsText += `> 🐢 SILA MD MINI BOT`;
+                
+                await socket.sendMessage(from, { text: connectionsText }, { quoted: msg });
+                console.log(`✅ Connections command executed`);
+                return;
+            }
+            
+            // ============ MENU COMMAND ============
+            if (command === 'menu' || command === 'help') {
+                let menuText = `*╭━━━〔 🐢 SILA MD MENU 🐢 〕━━━┈⊷*\n`;
+                menuText += `*┃🐢│ BOT COMMANDS*\n`;
+                menuText += `*┃🐢│ Prefix: ${defaultConfig.PREFIX}*\n`;
+                menuText += `*╰━━━━━━━━━━━━━━━┈⊷*\n\n`;
+                
+                menuText += `*📋 BASIC COMMANDS*\n`;
+                menuText += `┌─────────────────────┈⊷\n`;
+                menuText += `│ ${defaultConfig.PREFIX}ping - Check bot response\n`;
+                menuText += `│ ${defaultConfig.PREFIX}stats - Bot statistics\n`;
+                menuText += `│ ${defaultConfig.PREFIX}connections - Active sessions\n`;
+                menuText += `│ ${defaultConfig.PREFIX}menu - Show this menu\n`;
+                menuText += `└─────────────────────┈⊷\n\n`;
+                
+                // Add plugin commands
+                if (plugins.size > 0) {
+                    menuText += `*🔧 PLUGIN COMMANDS*\n`;
+                    menuText += `┌─────────────────────┈⊷\n`;
+                    const pluginCommands = Array.from(plugins.keys()).sort();
+                    for (const cmd of pluginCommands) {
+                        const plugin = plugins.get(cmd);
+                        const desc = plugin.description ? ` - ${plugin.description}` : '';
+                        menuText += `│ ${defaultConfig.PREFIX}${cmd}${desc}\n`;
+                    }
+                    menuText += `└─────────────────────┈⊷\n\n`;
+                }
+                
+                menuText += `*🔗 LINKS*\n`;
+                menuText += `┌─────────────────────┈⊷\n`;
+                menuText += `│ 📢 Channel: ${defaultConfig.CHANNEL_LINK}\n`;
+                menuText += `│ 👥 Group: ${defaultConfig.GROUP_INVITE_LINK}\n`;
+                menuText += `│ 👑 Owner: wa.me/${defaultConfig.OWNER_NUMBER}\n`;
+                menuText += `└─────────────────────┈⊷\n\n`;
+                
+                menuText += `> 🐢 SILA MD MINI BOT`;
+                
+                await socket.sendMessage(from, { 
+                    image: { url: defaultConfig.RCD_IMAGE_PATH },
+                    caption: menuText 
+                }, { quoted: msg });
+                console.log(`✅ Menu command executed`);
+                return;
+            }
+            
+            // ============ OWNER COMMAND ============
+            if (command === 'owner') {
+                const ownerText = `*👑 OWNER INFORMATION*\n\n📱 *Number:* wa.me/${defaultConfig.OWNER_NUMBER}\n📢 *Channel:* ${defaultConfig.CHANNEL_LINK}\n👥 *Group:* ${defaultConfig.GROUP_INVITE_LINK}\n\n> 🐢 SILA MD MINI BOT`;
+                await socket.sendMessage(from, { text: ownerText }, { quoted: msg });
+                return;
+            }
+            
+            // ============ DISCONNECT COMMAND ============
+            if (command === 'disconnect' && args.length > 0) {
+                const targetNumber = args[0].replace(/[^0-9]/g, '');
+                const userConfig = await loadUserConfig(number);
+                const ownerNumber = userConfig.OWNER_NUMBER || defaultConfig.OWNER_NUMBER;
+                const senderNumber = msg.key.remoteJid.split('@')[0];
+                
+                if (senderNumber !== ownerNumber && !msg.key.fromMe) {
+                    await socket.sendMessage(from, { text: '❌ Only owner can use this command!' }, { quoted: msg });
+                    return;
+                }
+                
+                if (!activeSockets.has(targetNumber)) {
+                    await socket.sendMessage(from, { text: `❌ Number +${targetNumber} is not connected.` }, { quoted: msg });
+                    return;
+                }
+                
+                try {
+                    const targetSocket = activeSockets.get(targetNumber);
+                    await targetSocket.ws.close();
+                    targetSocket.ev.removeAllListeners();
+                    
+                    activeSockets.delete(targetNumber);
+                    socketCreationTime.delete(targetNumber);
+                    await removeNumberFromMongoDB(targetNumber);
+                    await deleteSessionFromMongoDB(targetNumber);
+                    
+                    await socket.sendMessage(from, { text: `✅ Successfully disconnected +${targetNumber}` }, { quoted: msg });
+                    console.log(`✅ Disconnected ${targetNumber} via command`);
+                } catch (error) {
+                    await socket.sendMessage(from, { text: `❌ Failed to disconnect: ${error.message}` }, { quoted: msg });
+                }
+                return;
+            }
+
+            // ============ EXECUTE PLUGIN COMMANDS ============
+            if (plugins.has(command)) {
+                const plugin = plugins.get(command);
+                try {
+                    console.log(`🔧 Executing plugin: ${command}`);
+                    await plugin.execute(socket, msg, args, number);
+                    await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
+                    console.log(`✅ Plugin ${command} executed successfully`);
+                } catch (err) {
+                    console.error(`❌ Plugin "${command}" error:`, err);
+                    await socket.sendMessage(
+                        from,
+                        {
+                            image: { url: defaultConfig.RCD_IMAGE_PATH },
+                            caption: formatMessage(
+                                '❌ ERROR',
+                                `Error with ${command} command:\n${err.message || err}`,
+                                '*🐢 SILA MD MINI BOT 🐢*'
+                            )
+                        },
+                        { quoted: msg }
+                    );
+                }
+                return;
+            }
+            
+            // If command not found
+            await socket.sendMessage(from, { 
+                text: `❌ Command "${command}" not found. Type ${defaultConfig.PREFIX}menu to see available commands.` 
+            }, { quoted: msg });
+            
+        } catch (err) {
+            console.error('❌ Command handler error:', err);
+        }
+    });
+}
+
+// ==================== AUTO REPLY HANDLER ====================
+
+async function setupAutoReplyHandlers(socket, number) {
+    const userConfig = await loadUserConfig(number);
+    
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        try {
+            const msg = messages[0];
+            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
+
+            let text = '';
+            if (msg.message.conversation) {
+                text = msg.message.conversation.toLowerCase().trim();
+            } else if (msg.message.extendedTextMessage?.text) {
+                text = msg.message.extendedTextMessage.text.toLowerCase().trim();
+            }
+
+            if (!text || userConfig.AUTO_REPLY !== 'true') return;
+
+            const autoReplies = await getAutoRepliesFromMongoDB(number);
+            
+            for (const [trigger, reply] of Object.entries(autoReplies)) {
+                if (text === trigger.toLowerCase()) {
+                    await socket.sendMessage(msg.key.remoteJid, { text: reply }, { quoted: msg });
+                    console.log(`🤖 Auto-replied to "${trigger}" for ${number}`);
+                    break;
+                }
+            }
+            
+            // Default auto replies
+            const defaultReplies = {
+                'hi': 'Hello! 👋 How can I help you?',
+                'hello': 'Hi there! 😊 Use .menu to see commands',
+                'mambo': 'Poa sana! 👋 Nikusaidie kuhusu?',
+                'habari': 'Nzuri sana! 👋 Habari yako?',
+                'thanks': 'You\'re welcome! 😊',
+                'asante': 'Karibu sana! 😊',
+                'bot': 'Yes, I am SILA MD MINI BOT! 🤖'
+            };
+            
+            if (defaultReplies[text] && userConfig.AUTO_REPLY === 'true') {
+                await socket.sendMessage(msg.key.remoteJid, { text: defaultReplies[text] }, { quoted: msg });
+                console.log(`🤖 Auto-replied to "${text}" for ${number}`);
+            }
+        } catch (err) {
+            console.error('Auto-reply error:', err);
+        }
+    });
+}
+
+// ==================== STATUS HANDLER ====================
+
 async function setupStatusHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -208,40 +541,8 @@ async function setupStatusHandlers(socket, number) {
     });
 }
 
-// Auto Reply Handler
-async function setupAutoReplyHandlers(socket, number) {
-    const userConfig = await loadUserConfig(number);
-    
-    socket.ev.on('messages.upsert', async ({ messages }) => {
-        try {
-            const msg = messages[0];
-            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
+// ==================== WELCOME HANDLER ====================
 
-            let text = '';
-            if (msg.message.conversation) {
-                text = msg.message.conversation.toLowerCase().trim();
-            } else if (msg.message.extendedTextMessage?.text) {
-                text = msg.message.extendedTextMessage.text.toLowerCase().trim();
-            }
-
-            if (!text || userConfig.AUTO_REPLY !== 'true') return;
-
-            const autoReplies = await getAutoRepliesFromMongoDB(number);
-            
-            for (const [trigger, reply] of Object.entries(autoReplies)) {
-                if (text === trigger.toLowerCase()) {
-                    await socket.sendMessage(msg.key.remoteJid, { text: reply }, { quoted: msg });
-                    console.log(`Auto-replied to "${trigger}" for ${number}`);
-                    break;
-                }
-            }
-        } catch (err) {
-            console.error('Auto-reply error:', err);
-        }
-    });
-}
-
-// Welcome Handler
 async function setupWelcomeHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -260,8 +561,9 @@ async function setupWelcomeHandlers(socket, number) {
                 for (const user of participants) {
                     const userName = user.split('@')[0];
                     const welcomeText = welcomeMsg?.welcome || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
-*┃🐢│ GROUP NAME: ${groupName}*
-*┃🐢│ WELCOME @${userName} 🐢*
+*┃🐢│ WELCOME TO ${groupName}*
+*┃🐢│ Hello @${userName} 🐢*
+*┃🐢│ Enjoy our group!*
 *╰━━━━━━━━━━━━━━━┈⊷*`;
 
                     await socket.sendMessage(groupId, {
@@ -278,6 +580,7 @@ async function setupWelcomeHandlers(socket, number) {
                     const userName = user.split('@')[0];
                     const leftText = welcomeMsg?.leave || `*╭━━━〔 🐢 SILA MD 🐢 〕━━━┈⊷*
 *ALLAH HAFIZ @${userName} 🥺*
+*We will miss you!*
 *╰━━━━━━━━━━━━━━━┈⊷*`;
 
                     await socket.sendMessage(groupId, {
@@ -294,7 +597,8 @@ async function setupWelcomeHandlers(socket, number) {
     });
 }
 
-// Anti-link handler
+// ==================== ANTI-LINK HANDLER ====================
+
 async function setupAntiLinkHandler(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
         for (const msg of messages) {
@@ -328,6 +632,7 @@ async function setupAntiLinkHandler(socket, number) {
                                 participant: msg.key.participant
                             }
                         });
+                        console.log(`🚫 Deleted group link from ${msg.key.participant}`);
                     }
                 }
             } catch (e) {
@@ -337,7 +642,8 @@ async function setupAntiLinkHandler(socket, number) {
     });
 }
 
-// Call Handler
+// ==================== CALL HANDLER ====================
+
 async function setupCallHandlers(socket, number) {
     socket.ev.on('call', async (calls) => {
         try {
@@ -350,7 +656,7 @@ async function setupCallHandlers(socket, number) {
                 await socket.sendMessage(call.from, { 
                     text: userConfig.REJECT_MSG || defaultConfig.REJECT_MSG
                 });
-                console.log(`Call rejected for ${number} from ${call.from}`);
+                console.log(`📞 Call rejected for ${number} from ${call.from}`);
             }
         } catch (err) {
             console.error(`Anti-call error for ${number}:`, err);
@@ -358,7 +664,8 @@ async function setupCallHandlers(socket, number) {
     });
 }
 
-// Join Group
+// ==================== JOIN GROUP ====================
+
 async function joinGroup(socket) {
     let retries = defaultConfig.MAX_RETRIES;
     const inviteCodeMatch = defaultConfig.GROUP_INVITE_LINK.match(/chat\.whatsapp\.com\/([a-zA-Z0-9]+)/);
@@ -378,6 +685,7 @@ async function joinGroup(socket) {
             throw new Error('No group ID in response');
         } catch (error) {
             retries--;
+            console.log(`⚠️ Join group attempt failed (${retries} retries left):`, error.message);
             if (retries === 0) {
                 return { status: 'failed', error: error.message };
             }
@@ -387,12 +695,13 @@ async function joinGroup(socket) {
     return { status: 'failed', error: 'Max retries reached' };
 }
 
-// Auto Restart
+// ==================== AUTO RESTART ====================
+
 function setupAutoRestart(socket, number) {
     socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
-            console.log(`Connection lost for ${number}, attempting to reconnect...`);
+            console.log(`⚠️ Connection lost for ${number}, attempting to reconnect...`);
             await delay(10000);
             activeSockets.delete(number.replace(/[^0-9]/g, ''));
             socketCreationTime.delete(number.replace(/[^0-9]/g, ''));
@@ -402,131 +711,21 @@ function setupAutoRestart(socket, number) {
     });
 }
 
-// ==================== COMMAND HANDLER WITH PING ====================
+// ==================== AUTO BIO UPDATE ====================
 
-function setupCommandHandlers(socket, number) {
-    socket.ev.on('messages.upsert', async ({ messages }) => {
-        try {
-            const msg = messages[0];
-            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
-
-            let command = null;
-            let args = [];
-            let from = msg.key.remoteJid;
-
-            if (msg.message.conversation || msg.message.extendedTextMessage?.text) {
-                const text = (msg.message.conversation || msg.message.extendedTextMessage.text || '').trim();
-                const userConfig = await loadUserConfig(number);
-                const prefix = userConfig.PREFIX || defaultConfig.PREFIX;
-                
-                if (text.startsWith(prefix)) {
-                    const parts = text.slice(prefix.length).trim().split(/\s+/);
-                    command = parts[0].toLowerCase();
-                    args = parts.slice(1);
-                }
-            }
-
-            if (!command) return;
-
-            // ============ PING COMMAND ============
-            if (command === 'ping') {
-                const start = Date.now();
-                await socket.sendMessage(from, { text: '🏓 Pinging...' }, { quoted: msg });
-                const end = Date.now();
-                const ping = end - start;
-                
-                const uptime = process.uptime();
-                const uptimeString = formatUptime(uptime);
-                
-                await socket.sendMessage(from, { 
-                    text: `*🏓 PONG!*\n\n📡 *Ping:* ${ping}ms\n🤖 *Bot:* Active\n💾 *Database:* MongoDB Connected\n⏱️ *Uptime:* ${uptimeString}\n🕐 *Time:* ${new Date().toLocaleString()}\n\n> 🐢 SILA MD MINI BOT`
-                }, { quoted: msg });
-                return;
-            }
-            
-            // ============ STATS COMMAND ============
-            if (command === 'stats' || command === 'status') {
-                const activeCount = activeSockets.size;
-                const memoryUsage = process.memoryUsage();
-                const uptime = process.uptime();
-                
-                let statsText = `*📊 BOT STATISTICS*\n\n`;
-                statsText += `🤖 *Active Sessions:* ${activeCount}\n`;
-                statsText += `⏱️ *Uptime:* ${formatUptime(uptime)}\n`;
-                statsText += `💾 *Memory Usage:* ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB\n`;
-                statsText += `📡 *Node Version:* ${process.version}\n`;
-                statsText += `🕐 *Time:* ${new Date().toLocaleString()}\n\n`;
-                statsText += `> 🐢 SILA MD MINI BOT`;
-                
-                await socket.sendMessage(from, { text: statsText }, { quoted: msg });
-                return;
-            }
-            
-            // ============ CONNECTIONS COMMAND ============
-            if (command === 'connections' || command === 'sessions') {
-                const numbers = Array.from(activeSockets.keys());
-                
-                if (numbers.length === 0) {
-                    await socket.sendMessage(from, { text: '❌ No active connections found.' }, { quoted: msg });
-                    return;
-                }
-                
-                let connectionsText = `*📱 ACTIVE CONNECTIONS*\n\n`;
-                for (const num of numbers) {
-                    const creationTime = socketCreationTime.get(num);
-                    const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
-                    connectionsText += `📱 *+${num}*\n`;
-                    connectionsText += `   ⏱️ Uptime: ${formatUptime(uptime)}\n\n`;
-                }
-                connectionsText += `📊 *Total:* ${numbers.length} active\n`;
-                connectionsText += `> 🐢 SILA MD MINI BOT`;
-                
-                await socket.sendMessage(from, { text: connectionsText }, { quoted: msg });
-                return;
-            }
-            
-            // ============ DISCONNECT COMMAND ============
-            if (command === 'disconnect' && args.length > 0) {
-                const targetNumber = args[0].replace(/[^0-9]/g, '');
-                const userConfig = await loadUserConfig(number);
-                const ownerNumber = userConfig.OWNER_NUMBER || defaultConfig.OWNER_NUMBER;
-                const senderNumber = msg.key.remoteJid.split('@')[0];
-                
-                if (senderNumber !== ownerNumber && !msg.key.fromMe) {
-                    await socket.sendMessage(from, { text: '❌ Only owner can use this command!' }, { quoted: msg });
-                    return;
-                }
-                
-                if (!activeSockets.has(targetNumber)) {
-                    await socket.sendMessage(from, { text: `❌ Number +${targetNumber} is not connected.` }, { quoted: msg });
-                    return;
-                }
-                
-                try {
-                    const targetSocket = activeSockets.get(targetNumber);
-                    await targetSocket.ws.close();
-                    targetSocket.ev.removeAllListeners();
-                    
-                    activeSockets.delete(targetNumber);
-                    socketCreationTime.delete(targetNumber);
-                    await removeNumberFromMongoDB(targetNumber);
-                    await deleteSessionFromMongoDB(targetNumber);
-                    
-                    await socket.sendMessage(from, { text: `✅ Successfully disconnected +${targetNumber}` }, { quoted: msg });
-                    console.log(`✅ Disconnected ${targetNumber} via command`);
-                } catch (error) {
-                    await socket.sendMessage(from, { text: `❌ Failed to disconnect: ${error.message}` }, { quoted: msg });
-                }
-                return;
-            }
-
-            // Increment stats
-            await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-            
-        } catch (err) {
-            console.error('❌ Command handler error:', err);
-        }
-    });
+async function updateAboutStatus(socket, number) {
+    try {
+        const userConfig = await loadUserConfig(number);
+        if (userConfig.AUTO_BIO !== 'true') return;
+        
+        const bioList = userConfig.BIO_LIST || defaultConfig.BIO_LIST;
+        const randomBio = bioList[Math.floor(Math.random() * bioList.length)];
+        
+        await socket.updateProfileStatus(randomBio);
+        console.log(`📝 Bio updated for ${number}: ${randomBio}`);
+    } catch (error) {
+        console.error('❌ Failed to update bio:', error);
+    }
 }
 
 // ==================== MAIN STARTBOT FUNCTION ====================
@@ -537,8 +736,11 @@ async function startBot(number, res = null) {
 
     if (activeSockets.has(sanitizedNumber)) {
         console.log(`⏩ ${sanitizedNumber} is already connected`);
-        if (res && !res.headersSent) {
-            return res.json({ status: 'already_connected', message: 'Number is already connected' });
+        if (res && typeof res.json === 'function' && !res.headersSent) {
+            return res.json({ 
+                status: 'already_connected', 
+                message: 'Number is already connected' 
+            });
         }
         return;
     }
@@ -593,17 +795,17 @@ async function startBot(number, res = null) {
                     await delay(1500);
                     const code = await socket.requestPairingCode(sanitizedNumber);
                     console.log(`🔑 Pairing Code for ${sanitizedNumber}: ${code}`);
-                    if (res && !res.headersSent) {
+                    if (res && typeof res.json === 'function' && !res.headersSent) {
                         return res.json({ code, status: 'new_pairing' });
                     }
                 } catch (err) {
                     console.error('❌ Pairing error:', err.message);
-                    if (res && !res.headersSent) {
+                    if (res && typeof res.json === 'function' && !res.headersSent) {
                         return res.json({ error: 'Failed to generate pairing code' });
                     }
                 }
             }, 3000);
-        } else if (res && !res.headersSent) {
+        } else if (res && typeof res.json === 'function' && !res.headersSent) {
             res.json({ status: 'reconnecting', message: 'Reconnecting with existing session' });
         }
 
@@ -625,7 +827,12 @@ async function startBot(number, res = null) {
                     const userJid = jidNormalizedUser(socket.user.id);
 
                     await updateAboutStatus(socket, sanitizedNumber);
-                    await joinGroup(socket);
+                    
+                    // Join group
+                    const groupResult = await joinGroup(socket);
+                    if (groupResult.status === 'success') {
+                        console.log(`✅ Bot joined group for ${sanitizedNumber}`);
+                    }
 
                     // Follow newsletter
                     try {
@@ -644,7 +851,10 @@ async function startBot(number, res = null) {
 *┃🐢│ STATUS :❯ ONLINE AND READY!*
 *╰━━━━━━━━━━━━━━━┈⊷*
 
-📢 Make sure to join our channels and groups!`;
+📢 Make sure to join our channels and groups!
+
+🔗 Group: ${defaultConfig.GROUP_INVITE_LINK}
+📢 Channel: ${defaultConfig.CHANNEL_LINK}`;
 
                     await socket.sendMessage(userJid, {
                         image: { url: defaultConfig.RCD_IMAGE_PATH },
@@ -662,8 +872,8 @@ async function startBot(number, res = null) {
     } catch (error) {
         console.error('StartBot error:', error);
         socketCreationTime.delete(sanitizedNumber);
-        if (res && !res.headersSent) {
-            res.status(503).send({ error: 'Service Unavailable' });
+        if (res && typeof res.json === 'function' && !res.headersSent) {
+            res.status(503).json({ error: 'Service Unavailable' });
         }
     }
 }
@@ -699,256 +909,57 @@ async function autoReconnectFromMongoDB() {
     }
 }
 
-// ==================== ADMIN PANEL ROUTES ====================
-
-// Serve HTML pages
-router.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-router.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-router.get('/settings', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'settings.html'));
-});
-
-// Admin authentication middleware
-const adminAuth = (req, res, next) => {
-    const pin = req.query.pin || req.body.pin || req.headers['x-admin-pin'];
-    if (pin !== ADMIN_PIN) {
-        return res.status(401).json({ error: 'Invalid PIN', required: true });
-    }
-    next();
-};
-
-// API: Get all sessions from MongoDB
-router.get('/api/sessions', adminAuth, async (req, res) => {
-    try {
-        const numbers = await getAllNumbersFromMongoDB();
-        const sessions = [];
-        
-        for (const number of numbers) {
-            const isActive = activeSockets.has(number);
-            const creationTime = socketCreationTime.get(number);
-            const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
-            const stats = await getStatsForNumber(number);
-            const config = await getUserConfigFromMongoDB(number);
-            
-            sessions.push({
-                number: number,
-                isActive: isActive,
-                uptime: uptime,
-                uptimeFormatted: formatUptime(uptime),
-                connectionTime: creationTime ? new Date(creationTime).toLocaleString() : null,
-                stats: stats,
-                config: config
-            });
-        }
-        
-        res.json({
-            success: true,
-            total: sessions.length,
-            active: activeSockets.size,
-            sessions: sessions,
-            serverUptime: formatUptime(process.uptime()),
-            memoryUsage: process.memoryUsage(),
-            nodeVersion: process.version
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Disconnect a session
-router.post('/api/disconnect', adminAuth, async (req, res) => {
-    const { number } = req.body;
-    if (!number) {
-        return res.status(400).json({ error: 'Number is required' });
-    }
-    
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-    
-    if (!activeSockets.has(sanitizedNumber)) {
-        return res.status(404).json({ error: 'Session not found or already disconnected' });
-    }
-    
-    try {
-        const socket = activeSockets.get(sanitizedNumber);
-        await socket.ws.close();
-        socket.ev.removeAllListeners();
-        
-        activeSockets.delete(sanitizedNumber);
-        socketCreationTime.delete(sanitizedNumber);
-        
-        res.json({ success: true, message: `Session ${sanitizedNumber} disconnected successfully` });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Delete session from MongoDB
-router.post('/api/delete-session', adminAuth, async (req, res) => {
-    const { number } = req.body;
-    if (!number) {
-        return res.status(400).json({ error: 'Number is required' });
-    }
-    
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-    
-    try {
-        // Disconnect if active
-        if (activeSockets.has(sanitizedNumber)) {
-            const socket = activeSockets.get(sanitizedNumber);
-            await socket.ws.close();
-            socket.ev.removeAllListeners();
-            activeSockets.delete(sanitizedNumber);
-            socketCreationTime.delete(sanitizedNumber);
-        }
-        
-        await removeNumberFromMongoDB(sanitizedNumber);
-        await deleteSessionFromMongoDB(sanitizedNumber);
-        
-        // Clean local session folder
-        const sessionPath = path.join(SESSION_BASE_PATH, `session_${sanitizedNumber}`);
-        if (fs.existsSync(sessionPath)) {
-            await fs.remove(sessionPath);
-        }
-        
-        res.json({ success: true, message: `Session ${sanitizedNumber} deleted successfully` });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Reconnect a session
-router.post('/api/reconnect', adminAuth, async (req, res) => {
-    const { number } = req.body;
-    if (!number) {
-        return res.status(400).json({ error: 'Number is required' });
-    }
-    
-    const sanitizedNumber = number.replace(/[^0-9]/g, '');
-    
-    if (activeSockets.has(sanitizedNumber)) {
-        return res.json({ success: true, message: `Session ${sanitizedNumber} is already connected` });
-    }
-    
-    try {
-        const mockRes = { headersSent: false, send: () => {}, status: () => mockRes };
-        await startBot(sanitizedNumber, mockRes);
-        res.json({ success: true, message: `Reconnection initiated for ${sanitizedNumber}` });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Get bot settings
-router.get('/api/settings', adminAuth, async (req, res) => {
-    try {
-        const mongodbUri = await getMongoDBURI();
-        res.json({
-            success: true,
-            settings: {
-                mongodbUri: mongodbUri,
-                adminPin: ADMIN_PIN,
-                defaultConfig: defaultConfig
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Update MongoDB URI
-router.post('/api/update-mongodb', adminAuth, async (req, res) => {
-    const { mongodbUri } = req.body;
-    if (!mongodbUri) {
-        return res.status(400).json({ error: 'MongoDB URI is required' });
-    }
-    
-    try {
-        await updateMongoDBURI(mongodbUri);
-        res.json({ success: true, message: 'MongoDB URI updated. Please restart the bot.' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Update bot config for a number
-router.post('/api/update-config', adminAuth, async (req, res) => {
-    const { number, config } = req.body;
-    if (!number || !config) {
-        return res.status(400).json({ error: 'Number and config are required' });
-    }
-    
-    try {
-        await updateUserConfigInMongoDB(number, config);
-        res.json({ success: true, message: `Config updated for ${number}` });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Get stats for a number
-router.get('/api/stats', adminAuth, async (req, res) => {
-    const { number } = req.query;
-    if (!number) {
-        return res.status(400).json({ error: 'Number is required' });
-    }
-    
-    try {
-        const stats = await getStatsForNumber(number);
-        res.json({ success: true, stats: stats });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// API: Restart bot
-router.post('/api/restart', adminAuth, async (req, res) => {
-    try {
-        res.json({ success: true, message: 'Bot restarting...' });
-        setTimeout(() => {
-            process.exit(0);
-        }, 1000);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// ==================== API ROUTES ====================
 
 // Main pairing route
 router.get('/', async (req, res) => {
     const { number } = req.query;
     if (!number) {
-        return res.status(400).send({ error: 'Number parameter is required' });
+        return res.status(400).json({ error: 'Number parameter is required' });
     }
 
-    if (activeSockets.has(number.replace(/[^0-9]/g, ''))) {
-        return res.status(200).send({
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+
+    if (activeSockets.has(sanitizedNumber)) {
+        const creationTime = socketCreationTime.get(sanitizedNumber);
+        const uptime = creationTime ? Math.floor((Date.now() - creationTime) / 1000) : 0;
+        return res.status(200).json({
             status: 'already_connected',
-            message: 'This number is already connected'
+            message: 'This number is already connected',
+            connectionTime: creationTime ? new Date(creationTime).toLocaleString() : null,
+            uptime: formatUptime(uptime)
         });
     }
 
-    await startBot(number, res);
+    await startBot(sanitizedNumber, res);
 });
 
 router.get('/active', (req, res) => {
-    res.status(200).send({
+    const sessions = [];
+    for (const [number, socket] of activeSockets) {
+        const creationTime = socketCreationTime.get(number);
+        sessions.push({
+            number: number,
+            connected: true,
+            since: creationTime ? new Date(creationTime).toLocaleString() : null,
+            uptime: creationTime ? formatUptime(Math.floor((Date.now() - creationTime) / 1000)) : null
+        });
+    }
+    res.status(200).json({
         count: activeSockets.size,
-        numbers: Array.from(activeSockets.keys())
+        sessions: sessions
     });
 });
 
 router.get('/ping', (req, res) => {
-    res.status(200).send({
+    res.status(200).json({
         status: 'active',
-        message: '*🐢 SILA MD MINI BOT 🐢*',
+        message: '🐢 SILA MD MINI BOT 🐢',
         activeSessions: activeSockets.size,
+        commandsLoaded: plugins.size,
         database: 'MongoDB Connected',
-        uptime: formatUptime(process.uptime())
+        uptime: formatUptime(process.uptime()),
+        timestamp: new Date().toISOString()
     });
 });
 
@@ -957,7 +968,7 @@ router.get('/connect-all', async (req, res) => {
         const numbers = await getAllNumbersFromMongoDB();
         
         if (numbers.length === 0) {
-            return res.status(404).send({ error: 'No numbers found to connect' });
+            return res.status(404).json({ error: 'No numbers found to connect' });
         }
 
         const results = [];
@@ -967,26 +978,27 @@ router.get('/connect-all', async (req, res) => {
                 continue;
             }
 
-            const mockRes = { headersSent: false, send: () => {}, status: () => mockRes };
+            const mockRes = { headersSent: false, send: () => {}, status: () => mockRes, json: () => {} };
             await startBot(number, mockRes);
             results.push({ number, status: 'connection_initiated' });
             await delay(1000);
         }
 
-        res.status(200).send({
+        res.status(200).json({
             status: 'success',
             total: numbers.length,
             connections: results
         });
     } catch (error) {
         console.error('Connect all error:', error);
-        res.status(500).send({ error: 'Failed to connect all bots' });
+        res.status(500).json({ error: 'Failed to connect all bots' });
     }
 });
 
 // ==================== CLEANUP ====================
 
 process.on('exit', () => {
+    console.log('🛑 Shutting down... Closing all connections');
     activeSockets.forEach((socket, number) => {
         socket.ws.close();
         activeSockets.delete(number);
@@ -995,13 +1007,28 @@ process.on('exit', () => {
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught exception:', err);
-    exec(`pm2 restart ${process.env.PM2_NAME || 'SILA-MD-MINI-session'}`);
+    console.error('❌ Uncaught exception:', err);
+    if (process.env.PM2_NAME) {
+        exec(`pm2 restart ${process.env.PM2_NAME}`);
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 // Start auto-reconnect
 setTimeout(() => {
     autoReconnectFromMongoDB();
-}, 3000);
+}, 5000);
+
+console.log('\n╔════════════════════════════════════════╗');
+console.log('║     🐢 SILA MD BOT STARTED 🐢        ║');
+console.log('║                                      ║');
+console.log(`║   📦 Commands Loaded: ${plugins.size}              ║`);
+console.log(`║   🔧 Prefix: ${defaultConfig.PREFIX}                 ║`);
+console.log(`║   👥 Group: ${defaultConfig.GROUP_INVITE_LINK} ║`);
+console.log(`║   📢 Channel: ${defaultConfig.CHANNEL_LINK} ║`);
+console.log('╚════════════════════════════════════════╝\n');
 
 module.exports = router;
