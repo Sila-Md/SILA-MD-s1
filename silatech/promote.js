@@ -2,9 +2,9 @@
 cmd({
     pattern: "promote",
     alias: ["p", "makeadmin", "admin"],
-    react: "🥺",
-    desc: "Promotes a member to group admin",
-    category: "admin",
+    react: "👑",
+    desc: "Promote a member to group admin",
+    category: "group",
 }, async (conn, mek, args, botNumber) => {
     const from = mek.key.remoteJid;
     const isGroup = from.endsWith("@g.us");
@@ -12,27 +12,21 @@ cmd({
     const quoted = mek.message?.extendedTextMessage?.contextInfo?.participant;
     const q = args.join(" ");
 
-    // 🥺 react on command
-    await conn.sendMessage(from, { react: { text: "🥺", key: mek.key } });
+    await conn.sendMessage(from, { react: { text: "👑", key: mek.key } });
 
-    // ❌ Not group
     if (!isGroup) {
-        await conn.sendMessage(from, { react: { text: "😫", key: mek.key } });
         return await conn.sendMessage(from, {
-            text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • ❌ this command can only be used in groups*
-*╰━━━━━━━━━━━━━━━┈⊷*
+            text: `❌ 𝚝𝚑𝚒𝚜 𝚌𝚘𝚖𝚖𝚊𝚗𝚍 𝚌𝚊𝚗 𝚘𝚗𝚕𝚢 𝚋𝚎 𝚞𝚜𝚎𝚍 𝚒𝚗 𝚐𝚛𝚘𝚞𝚙𝚜
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
         });
     }
 
-    // Fetch group metadata
     const metadata = await conn.groupMetadata(from).catch(() => null);
     if (!metadata) {
-        return await conn.sendMessage(from, {
-            text: `❌ failed to get group info`
-        });
+        return await conn.sendMessage(from, { text: `❌ 𝚏𝚊𝚒𝚕𝚎𝚍 𝚝𝚘 𝚐𝚎𝚝 𝚐𝚛𝚘𝚞𝚙 𝚒𝚗𝚏𝚘` });
     }
 
     const participants = metadata.participants;
@@ -41,31 +35,26 @@ cmd({
     const isBotAdmins = groupAdmins.includes(botJid);
     const isAdmins = groupAdmins.includes(sender);
 
-    // ❌ User not admin
     if (!isAdmins) {
-        await conn.sendMessage(from, { react: { text: "😥", key: mek.key } });
         return await conn.sendMessage(from, {
-            text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • ❌ only group admins can use this*
-*╰━━━━━━━━━━━━━━━┈⊷*
+            text: `❌ 𝚘𝚗𝚕𝚢 𝚐𝚛𝚘𝚞𝚙 𝚊𝚍𝚖𝚒𝚗𝚜 𝚌𝚊𝚗 𝚞𝚜𝚎 𝚝𝚑𝚒𝚜
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
         });
     }
 
-    // ❌ Bot not admin
     if (!isBotAdmins) {
-        await conn.sendMessage(from, { react: { text: "😎", key: mek.key } });
         return await conn.sendMessage(from, {
-            text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • ❌ please make me admin first*
-*╰━━━━━━━━━━━━━━━┈⊷*
+            text: `❌ 𝚙𝚕𝚎𝚊𝚜𝚎 𝚖𝚊𝚔𝚎 𝚖𝚎 𝚊𝚍𝚖𝚒𝚗 𝚏𝚒𝚛𝚜𝚝
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
         });
     }
 
-    // 🎯 Determine target user
     let number;
     if (quoted) {
         number = quoted.split("@")[0];
@@ -76,13 +65,12 @@ cmd({
     }
 
     if (!number) {
-        await conn.sendMessage(from, { react: { text: "☺️", key: mek.key } });
         return await conn.sendMessage(from, {
             text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • 👤 which member to promote?*
-*┃🐢│ • 📝 .promote @user*
-*┃🐢│ • 💬 or reply to their message*
+*┃🐢│ • 📝 𝚞𝚜𝚊𝚐𝚎: .𝚙𝚛𝚘𝚖𝚘𝚝𝚎 @𝚞𝚜𝚎𝚛*
+*┃🐢│ • 💬 𝚘𝚛 𝚛𝚎𝚙𝚕𝚢 𝚝𝚘 𝚝𝚑𝚎𝚒𝚛 𝚖𝚎𝚜𝚜𝚊𝚐𝚎*
 *╰━━━━━━━━━━━━━━━┈⊷*
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
         });
@@ -90,13 +78,11 @@ cmd({
 
     const jid = number + "@s.whatsapp.net";
 
-    // 🧩 Skip if already admin
     if (groupAdmins.includes(jid)) {
-        await conn.sendMessage(from, { react: { text: "🥺", key: mek.key } });
         return await conn.sendMessage(from, {
-            text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • ⚠️ @${number} is already an admin*
-*╰━━━━━━━━━━━━━━━┈⊷*
+            text: `⚠️ @${number} 𝚒𝚜 𝚊𝚕𝚛𝚎𝚊𝚍𝚢 𝚊𝚗 𝚊𝚍𝚖𝚒𝚗
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext,
             mentions: [jid]
@@ -104,25 +90,18 @@ cmd({
     }
 
     try {
-        // ✅ Promote member
         await conn.groupParticipantsUpdate(from, [jid], "promote");
-        await conn.sendMessage(from, { react: { text: "☺️", key: mek.key } });
         await conn.sendMessage(from, {
-            text: `*╭━━〔 🐢 𝙿𝚁𝙾𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ • ✅ @${number} has been promoted*
-*┃🐢│ • 👑 from member to admin*
-*╰━━━━━━━━━━━━━━━┈⊷*
+            text: `✅ @${number} 𝚑𝚊𝚜 𝚋𝚎𝚎𝚗 𝚙𝚛𝚘𝚖𝚘𝚝𝚎𝚍 𝚝𝚘 𝚊𝚍𝚖𝚒𝚗
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext,
             mentions: [jid]
         });
-
+        await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
     } catch (error) {
         console.error("Promote Error:", error);
-        await conn.sendMessage(from, { react: { text: "😔", key: mek.key } });
-        // Error without box style - plain text only
-        await conn.sendMessage(from, { 
-            text: `❌ failed to promote user. please try again.`
-        });
+        await conn.sendMessage(from, { text: `❌ 𝚏𝚊𝚒𝚕𝚎𝚍 𝚝𝚘 𝚙𝚛𝚘𝚖𝚘𝚝𝚎 𝚞𝚜𝚎𝚛` });
     }
 });
