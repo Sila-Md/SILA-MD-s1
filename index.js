@@ -47,12 +47,12 @@ const {
     jidDecode
 } = require('@whiskeysockets/baileys');
 
-// Default Configuration - UPDATED with new features
+// Default Configuration
 const defaultConfig = {
     WELCOME: 'true',
-    AUTO_VIEW_STATUS: 'true',      // ✅ Auto view status
+    AUTO_VIEW_STATUS: 'true',
     AUTO_VOICE: 'true',
-    AUTO_LIKE_STATUS: 'true',      // ✅ Auto like status
+    AUTO_LIKE_STATUS: 'true',
     AUTO_RECORDING: 'true',
     AUTO_TYPING: 'true',
     AUTO_REPLY: 'false',
@@ -60,10 +60,10 @@ const defaultConfig = {
     READ_MESSAGE: 'true',
     ANTI_CALL: 'true',
     ANTI_DELETE: 'true',
-    ANTI_LINK: 'true',              // ✅ Antilink enabled
+    ANTI_LINK: 'true',
     AUTO_BIO: 'true',
     AUTO_LIKE_EMOJI: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥', '❤️', '💯', '✨', '⭐', '🌟'],
-    NEWSLETTER_REACT_EMOJIS: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥', '❤️', '💯', '✨', '⭐', '🌟'], // ✅ Newsletter reactions
+    NEWSLETTER_REACT_EMOJIS: ['💥', '👍', '😍', '💗', '🎈', '🎉', '🥳', '😎', '🚀', '🔥', '❤️', '💯', '✨', '⭐', '🌟'],
     PREFIX: '.',
     MAX_RETRIES: 3,
     GROUP_INVITE_LINK: 'https://chat.whatsapp.com/C0CWyj7RapP2vX7vNdUSTK',
@@ -75,9 +75,9 @@ const defaultConfig = {
     CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02',
     REJECT_MSG: 'Please don\'t call me! 😊',
     BIO_LIST: [
-        "🐢 SILA MINI | 🤖 AI Assistant",           // ✅ Changed to SILA MINI
+        "🐢 SILA MINI | 🤖 AI Assistant",
         "🌟 Powered by SILA TECH | 🚀 Fast & Reliable",
-        "💫 SILA MINI Bot | Always Active!",        // ✅ Changed to SILA MINI
+        "💫 SILA MINI Bot | Always Active!",
         "👑 SILA TECH | Mini WhatsApp Bot"
     ]
 };
@@ -128,6 +128,42 @@ const fkontak = {
 global.fkontak = fkontak;
 global.forwardContext = forwardContext;
 
+// ==================== SILA COMMAND SYSTEM ====================
+
+// Store commands in a Map
+const silaCommands = new Map();
+
+// Command registration function
+function cmd(options, functionExecute) {
+    if (!options.pattern) return;
+    
+    const commandData = {
+        pattern: options.pattern,
+        alias: options.alias || [],
+        react: options.react || '📌',
+        desc: options.desc || 'No description',
+        category: options.category || 'general',
+        filename: options.filename,
+        handler: functionExecute
+    };
+    
+    // Register main command
+    silaCommands.set(options.pattern, commandData);
+    
+    // Register aliases
+    if (options.alias && options.alias.length > 0) {
+        for (const alias of options.alias) {
+            silaCommands.set(alias, commandData);
+        }
+    }
+    
+    console.log(`✅ CMD: ${options.pattern} [${options.category}]`);
+}
+
+// Make cmd available globally
+global.cmd = cmd;
+global.silaCommands = silaCommands;
+
 // Helper Functions
 function formatUptime(seconds) {
     const days = Math.floor(seconds / 86400);
@@ -163,106 +199,54 @@ async function loadUserConfig(number) {
     }
 }
 
-// ==================== LOAD PLUGINS WITH LOGGING ====================
+// ==================== LOAD PLUGINS ====================
 
 console.log('\n╔════════════════════════════════════════╗');
-console.log('║     📦 LOADING PLUGINS SYSTEM        ║');
+console.log('║     📦 LOADING SILATECH COMMANDS     ║');
 console.log('╚════════════════════════════════════════╝\n');
 
-const plugins = new Map();
-const pluginDir = path.join(__dirname, 'plugins');
-
-// Create plugins directory if it doesn't exist
-if (!fs.existsSync(pluginDir)) {
-    fs.mkdirSync(pluginDir, { recursive: true });
-    console.log('📁 Created plugins directory');
-}
-
-// Load plugins from plugins folder
-if (fs.existsSync(pluginDir)) {
-    const files = fs.readdirSync(pluginDir).filter(file => file.endsWith('.js'));
-    
-    console.log(`🔍 Found ${files.length} plugin files\n`);
-    
-    let loadedCount = 0;
-    let failedCount = 0;
-    
-    for (const file of files) {
-        try {
-            const plugin = require(path.join(pluginDir, file));
-            if (plugin.command) {
-                plugins.set(plugin.command, plugin);
-                loadedCount++;
-                console.log(`   ✅ LOADED: ${plugin.command} → ${file}`);
-                if (plugin.description) {
-                    console.log(`      📝 Description: ${plugin.description}`);
-                }
-                if (plugin.alias && plugin.alias.length > 0) {
-                    console.log(`      🔄 Aliases: ${plugin.alias.join(', ')}`);
-                }
-            } else {
-                console.log(`   ⚠️ SKIPPED: ${file} (no command export)`);
-                failedCount++;
-            }
-        } catch (error) {
-            failedCount++;
-            console.log(`   ❌ FAILED: ${file} → ${error.message}`);
-        }
-    }
-    
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log(`║  ✅ Loaded: ${loadedCount} commands`);
-    console.log(`║  ❌ Failed: ${failedCount} files`);
-    console.log(`║  📦 Total: ${plugins.size} active commands`);
-    console.log('╚════════════════════════════════════════╝\n');
-    
-    // List all loaded commands
-    if (plugins.size > 0) {
-        console.log('📋 Available Commands:');
-        const commands = Array.from(plugins.keys()).sort();
-        const columns = 4;
-        let line = '';
-        commands.forEach((cmd, i) => {
-            line += `  .${cmd.padEnd(12)}`;
-            if ((i + 1) % columns === 0 || i === commands.length - 1) {
-                console.log(line);
-                line = '';
-            }
-        });
-        console.log('');
-    }
-} else {
-    console.log('⚠️ Plugins directory not found!');
-    console.log('📁 Created plugins directory at:', pluginDir);
-}
-
-// Also load from silatech directory (legacy support)
+// Load commands from silatech folder
 const silatechDir = path.join(__dirname, 'silatech');
-if (fs.existsSync(silatechDir)) {
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log('║     📦 LOADING SILATECH MODULES      ║');
-    console.log('╚════════════════════════════════════════╝\n');
-    
-    const silatechFiles = fs.readdirSync(silatechDir).filter(file => file.endsWith('.js'));
-    let silatechLoaded = 0;
-    
-    for (const file of silatechFiles) {
-        try {
-            require(path.join(silatechDir, file));
-            silatechLoaded++;
-            console.log(`   ✅ LOADED: ${file}`);
-        } catch (error) {
-            console.log(`   ❌ FAILED: ${file} → ${error.message}`);
-        }
+if (!fs.existsSync(silatechDir)) {
+    fs.mkdirSync(silatechDir, { recursive: true });
+    console.log('📁 Created silatech directory');
+}
+
+const silatechFiles = fs.readdirSync(silatechDir).filter(file => file.endsWith('.js'));
+console.log(`📁 Found ${silatechFiles.length} command files\n`);
+
+for (const file of silatechFiles) {
+    try {
+        const cmdPath = path.join(silatechDir, file);
+        delete require.cache[require.resolve(cmdPath)];
+        require(cmdPath);
+        console.log(`   ✅ Loaded: ${file}`);
+    } catch (error) {
+        console.log(`   ❌ Failed: ${file} - ${error.message}`);
     }
-    console.log(`\n✅ Loaded ${silatechLoaded} silatech modules\n`);
+}
+
+console.log(`\n🎯 Total commands loaded: ${silaCommands.size}\n`);
+
+// Display all commands
+if (silaCommands.size > 0) {
+    console.log('📋 Available commands:');
+    const cmds = Array.from(silaCommands.keys()).sort();
+    const columns = 4;
+    let line = '';
+    cmds.forEach((cmd, i) => {
+        line += `  .${cmd.padEnd(12)}`;
+        if ((i + 1) % columns === 0 || i === cmds.length - 1) {
+            console.log(line);
+            line = '';
+        }
+    });
+    console.log('');
 }
 
 // ==================== HANDLERS ====================
 
-// NOTE: AutoReply Handler has been COMPLETELY REMOVED
-
-// Status Handler - UPDATED with view and like status
+// Status Handler
 async function setupStatusHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -271,13 +255,11 @@ async function setupStatusHandlers(socket, number) {
         if (!message?.key || message.key.remoteJid !== 'status@broadcast') return;
 
         try {
-            // Auto View Status
             if (userConfig.AUTO_VIEW_STATUS === 'true' || defaultConfig.AUTO_VIEW_STATUS === 'true') {
                 let retries = defaultConfig.MAX_RETRIES;
                 while (retries > 0) {
                     try {
                         await socket.readMessages([message.key]);
-                        console.log(`👁️ Viewed status from: ${message.key.participant || 'unknown'}`);
                         break;
                     } catch (error) {
                         retries--;
@@ -287,7 +269,6 @@ async function setupStatusHandlers(socket, number) {
                 }
             }
 
-            // Auto Like Status
             if (userConfig.AUTO_LIKE_STATUS === 'true' || defaultConfig.AUTO_LIKE_STATUS === 'true') {
                 const emojis = userConfig.AUTO_LIKE_EMOJI || defaultConfig.AUTO_LIKE_EMOJI;
                 const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
@@ -299,7 +280,6 @@ async function setupStatusHandlers(socket, number) {
                             { react: { text: randomEmoji, key: message.key } },
                             { statusJidList: [message.key.participant] }
                         );
-                        console.log(`❤️ Liked status from: ${message.key.participant || 'unknown'} with: ${randomEmoji}`);
                         break;
                     } catch (error) {
                         retries--;
@@ -314,7 +294,7 @@ async function setupStatusHandlers(socket, number) {
     });
 }
 
-// Newsletter Handler - NEW with emoji reactions
+// Newsletter Handler with emoji reactions (FIXED)
 async function setupNewsletterHandlers(socket, number) {
     const userConfig = await loadUserConfig(number);
     
@@ -329,11 +309,13 @@ async function setupNewsletterHandlers(socket, number) {
         if (!isNewsletter) return;
         
         try {
-            const emojis = userConfig.NEWSLETTER_REACT_EMOJIS || defaultConfig.NEWSLETTER_REACT_EMOJIS || defaultConfig.AUTO_LIKE_EMOJI;
+            const emojis = userConfig.NEWSLETTER_REACT_EMOJIS || defaultConfig.NEWSLETTER_REACT_EMOJIS;
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            const msgId = message.newsletterServerId;
             
-            if (msgId) {
+            // Try to get message ID for reaction
+            let msgId = message.newsletterServerId || message.key?.id;
+            
+            if (msgId && typeof socket.newsletterReactMessage === 'function') {
                 await socket.newsletterReactMessage(message.key.remoteJid, msgId.toString(), randomEmoji);
                 console.log(`📰 Reacted to newsletter with: ${randomEmoji}`);
             }
@@ -398,7 +380,7 @@ async function setupWelcomeHandlers(socket, number) {
     });
 }
 
-// Anti-link Handler - UPDATED with config check
+// Anti-link Handler
 async function setupAntiLinkHandler(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
         for (const msg of messages) {
@@ -524,59 +506,60 @@ async function joinGroup(socket) {
     return { status: 'failed', error: 'Max retries reached' };
 }
 
-// ==================== COMMAND HANDLER (ONLY PLUGINS) ====================
+// ==================== SILA COMMAND HANDLER ====================
 
-function setupCommandHandlers(socket, number) {
+function setupSilaCommandHandler(socket, number) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
         try {
             const msg = messages[0];
-            if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
-
-            let command = null;
-            let args = [];
-            let from = msg.key.remoteJid;
-
-            if (msg.message.conversation || msg.message.extendedTextMessage?.text) {
-                const text = (msg.message.conversation || msg.message.extendedTextMessage.text || '').trim();
-                const userConfig = await loadUserConfig(number);
-                const prefix = userConfig.PREFIX || defaultConfig.PREFIX;
-                
-                if (text.startsWith(prefix)) {
-                    const parts = text.slice(prefix.length).trim().split(/\s+/);
-                    command = parts[0].toLowerCase();
-                    args = parts.slice(1);
-                }
-            }
-
-            if (!command) return;
-
-            console.log(`📝 Command received: ${command} from ${from} on bot ${number}`);
-
-            // EXECUTE PLUGIN COMMANDS ONLY
-            if (plugins.has(command)) {
-                const plugin = plugins.get(command);
+            if (!msg?.message) return;
+            
+            const from = msg.key.remoteJid;
+            if (!from || from === 'status@broadcast') return;
+            
+            // Get message text
+            let text = '';
+            if (msg.message?.conversation) text = msg.message.conversation;
+            else if (msg.message?.extendedTextMessage?.text) text = msg.message.extendedTextMessage.text;
+            else if (msg.message?.imageMessage?.caption) text = msg.message.imageMessage.caption;
+            else if (msg.message?.videoMessage?.caption) text = msg.message.videoMessage.caption;
+            
+            if (!text) return;
+            
+            // Check prefix
+            const prefix = defaultConfig.PREFIX;
+            if (!text.startsWith(prefix)) return;
+            
+            const parts = text.slice(prefix.length).trim().split(/\s+/);
+            const command = parts[0].toLowerCase();
+            const args = parts.slice(1);
+            
+            // Check if command exists
+            const cmdData = silaCommands.get(command);
+            if (!cmdData) return; // SILENT IGNORE - No "command not found" message
+            
+            console.log(`📝 Command: ${command} from ${from} [${number}]`);
+            
+            // Add reaction if specified
+            if (cmdData.react) {
                 try {
-                    console.log(`🔧 Executing plugin: ${command}`);
-                    await plugin.execute(socket, msg, args, number);
-                    await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
-                    console.log(`✅ Plugin ${command} executed successfully`);
-                } catch (err) {
-                    console.error(`❌ Plugin "${command}" error:`, err);
-                    await socket.sendMessage(from, { 
-                        image: { url: defaultConfig.RCD_IMAGE_PATH }, 
-                        caption: formatMessage('❌ ERROR', `Error with ${command} command:\n${err.message || err}`, '*🐢 SILA MINI 🐢*') 
-                    }, { quoted: msg });
-                }
-                return;
+                    await socket.sendMessage(from, {
+                        react: { text: cmdData.react, key: msg.key }
+                    });
+                } catch (e) {}
             }
             
-            // COMMAND NOT FOUND
-            await socket.sendMessage(from, { 
-                text: `❌ Command "${command}" not found.\n\n📋 Type *${defaultConfig.PREFIX}menu* to see available commands.` 
-            }, { quoted: msg });
+            // Execute command handler
+            try {
+                await cmdData.handler(socket, msg, args, number);
+                await incrementStats(number.replace(/[^0-9]/g, ''), 'commandsUsed');
+                console.log(`✅ Command ${command} executed successfully`);
+            } catch (err) {
+                console.error(`❌ Command "${command}" error:`, err);
+            }
             
-        } catch (err) {
-            console.error('❌ Command handler error:', err);
+        } catch (error) {
+            console.error('Command handler error:', error.message);
         }
     });
 }
@@ -624,11 +607,12 @@ async function startBot(number, res = null) {
         // Attach global objects to socket for use in plugins
         socket.fkontak = fkontak;
         socket.forwardContext = forwardContext;
+        socket.silaCommands = silaCommands;
         
         await setupWelcomeHandlers(socket, sanitizedNumber);
         await setupStatusHandlers(socket, sanitizedNumber);
-        await setupCommandHandlers(socket, sanitizedNumber);
-        await setupNewsletterHandlers(socket, sanitizedNumber);  // ✅ NEW newsletter handler
+        await setupSilaCommandHandler(socket, sanitizedNumber);
+        await setupNewsletterHandlers(socket, sanitizedNumber);
         await setupAntiLinkHandler(socket, sanitizedNumber);
         await setupCallHandlers(socket, sanitizedNumber);
         setupAutoRestart(socket, sanitizedNumber);
@@ -777,7 +761,7 @@ router.get('/api/sessions', adminAuth, async (req, res) => {
                 stats: stats
             });
         }
-        res.json({ success: true, total: sessions.length, active: activeSockets.size, sessions: sessions, serverUptime: formatUptime(process.uptime()), memoryUsage: process.memoryUsage(), nodeVersion: process.version, commandsLoaded: plugins.size });
+        res.json({ success: true, total: sessions.length, active: activeSockets.size, sessions: sessions, serverUptime: formatUptime(process.uptime()), memoryUsage: process.memoryUsage(), nodeVersion: process.version, commandsLoaded: silaCommands.size });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -907,7 +891,7 @@ router.get('/api/info', (req, res) => {
             newsletterReactions: true
         },
         activeSessions: activeSockets.size,
-        commandsLoaded: plugins.size
+        commandsLoaded: silaCommands.size
     });
 });
 
@@ -934,7 +918,7 @@ router.get('/active', (req, res) => {
 });
 
 router.get('/ping', (req, res) => {
-    res.json({ status: 'active', message: '🐢 SILA MINI BOT 🐢', activeSessions: activeSockets.size, commandsLoaded: plugins.size, database: 'MongoDB Connected', uptime: formatUptime(process.uptime()) });
+    res.json({ status: 'active', message: '🐢 SILA MINI BOT 🐢', activeSessions: activeSockets.size, commandsLoaded: silaCommands.size, database: 'MongoDB Connected', uptime: formatUptime(process.uptime()) });
 });
 
 router.get('/connect-all', async (req, res) => {
@@ -982,7 +966,7 @@ setTimeout(() => autoReconnectFromMongoDB(), 5000);
 console.log('\n╔════════════════════════════════════════╗');
 console.log('║     🐢 SILA MINI BOT STARTED 🐢      ║');
 console.log('║                                      ║');
-console.log(`║   📦 Commands Loaded: ${plugins.size}              ║`);
+console.log(`║   📦 Commands Loaded: ${silaCommands.size}              ║`);
 console.log(`║   🔧 Prefix: ${defaultConfig.PREFIX}                 ║`);
 console.log(`║   👥 Group: ${defaultConfig.GROUP_INVITE_LINK} ║`);
 console.log(`║   📢 Channel: ${defaultConfig.CHANNEL_LINK} ║`);
