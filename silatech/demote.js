@@ -31,23 +31,11 @@ cmd({
 
     const participants = metadata.participants;
     const groupAdmins = participants.filter(p => p.admin).map(a => a.id);
-    const botJid = conn.user.id.split(":")[0] + "@s.whatsapp.net";
-    const isBotAdmins = groupAdmins.includes(botJid);
     const isAdmins = groupAdmins.includes(sender);
 
     if (!isAdmins) {
         return await conn.sendMessage(from, {
             text: `❌ 𝚘𝚗𝚕𝚢 𝚐𝚛𝚘𝚞𝚙 𝚊𝚍𝚖𝚒𝚗𝚜 𝚌𝚊𝚗 𝚞𝚜𝚎 𝚝𝚑𝚒𝚜
-
-𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
-> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
-            contextInfo: conn.forwardContext
-        });
-    }
-
-    if (!isBotAdmins) {
-        return await conn.sendMessage(from, {
-            text: `❌ 𝚙𝚕𝚎𝚊𝚜𝚎 𝚖𝚊𝚔𝚎 𝚖𝚎 𝚊𝚍𝚖𝚒𝚗 𝚏𝚒𝚛𝚜𝚝
 
 𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
@@ -77,6 +65,7 @@ cmd({
     }
 
     const jid = number + "@s.whatsapp.net";
+    const botJid = conn.user.id.split(":")[0] + "@s.whatsapp.net";
     const botJidNumber = botJid.split("@")[0];
 
     if (number === botJidNumber) {
