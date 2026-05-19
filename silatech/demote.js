@@ -1,129 +1,118 @@
 // silatech/demote.js
 cmd({
     pattern: "demote",
-    alias: ["d", "dismiss", "removeadmin", "dmt"],
-    react: "🥺",
-    desc: "Demotes a group admin to a normal member",
-    category: "admin",
+    alias: ["d", "dismiss", "removeadmin"],
+    react: "🔻",
+    desc: "Demote an admin to normal member",
+    category: "group",
 }, async (conn, mek, args, botNumber) => {
     const from = mek.key.remoteJid;
-    const isGroup = from.endsWith('@g.us');
+    const isGroup = from.endsWith("@g.us");
     const sender = mek.key.participant || mek.key.remoteJid;
-    const groupMetadata = isGroup ? await conn.groupMetadata(from).catch(() => null) : null;
-    const groupAdmins = groupMetadata ? groupMetadata.participants.filter(p => p.admin).map(p => p.id) : [];
-    const isAdmins = groupAdmins.includes(sender);
-    const isBotAdmins = groupAdmins.includes(conn.user.id);
+    const quoted = mek.message?.extendedTextMessage?.contextInfo?.participant;
     const q = args.join(" ");
 
-    // 🥺 react on command start
-    await conn.sendMessage(from, { react: { text: "🥺", key: mek.key } });
+    await conn.sendMessage(from, { react: { text: "🔻", key: mek.key } });
 
-    // ⚠️ Group check
     if (!isGroup) {
-        await conn.sendMessage(from, { react: { text: "😫", key: mek.key } });
-        return await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❌ 𝚃𝙷𝙸𝚂 𝙲𝙾𝙼𝙼𝙰𝙽𝙳 𝙲𝙰𝙽 𝙾𝙽𝙻𝚈 𝙱𝙴*
-*┃🐢│ 𝚄𝚂𝙴𝙳 𝙸𝙽 𝙶𝚁𝙾𝚄𝙿𝚂*
-*╰━━━━━━━━━━━━━━━┈⊷*
+        return await conn.sendMessage(from, {
+            text: `❌ 𝚝𝚑𝚒𝚜 𝚌𝚘𝚖𝚖𝚊𝚗𝚍 𝚌𝚊𝚗 𝚘𝚗𝚕𝚢 𝚋𝚎 𝚞𝚜𝚎𝚍 𝚒𝚗 𝚐𝚛𝚘𝚞𝚙𝚜
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
+        });
     }
 
-    // 👮 User admin check
+    const metadata = await conn.groupMetadata(from).catch(() => null);
+    if (!metadata) {
+        return await conn.sendMessage(from, { text: `❌ 𝚏𝚊𝚒𝚕𝚎𝚍 𝚝𝚘 𝚐𝚎𝚝 𝚐𝚛𝚘𝚞𝚙 𝚒𝚗𝚏𝚘` });
+    }
+
+    const participants = metadata.participants;
+    const groupAdmins = participants.filter(p => p.admin).map(a => a.id);
+    const botJid = conn.user.id.split(":")[0] + "@s.whatsapp.net";
+    const isBotAdmins = groupAdmins.includes(botJid);
+    const isAdmins = groupAdmins.includes(sender);
+
     if (!isAdmins) {
-        await conn.sendMessage(from, { react: { text: "😥", key: mek.key } });
-        return await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❌ 𝚃𝙷𝙸𝚂 𝙲𝙾𝙼𝙼𝙰𝙽𝙳 𝙲𝙰𝙽 𝙾𝙽𝙻𝚈*
-*┃🐢│ 𝙱𝙴 𝚄𝚂𝙴𝙳 𝙱𝚈 𝙶𝚁𝙾𝚄𝙿 𝙰𝙳𝙼𝙸𝙽𝚂*
-*╰━━━━━━━━━━━━━━━┈⊷*
+        return await conn.sendMessage(from, {
+            text: `❌ 𝚘𝚗𝚕𝚢 𝚐𝚛𝚘𝚞𝚙 𝚊𝚍𝚖𝚒𝚗𝚜 𝚌𝚊𝚗 𝚞𝚜𝚎 𝚝𝚑𝚒𝚜
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
+        });
     }
 
-    // 🤖 Bot admin check
     if (!isBotAdmins) {
-        await conn.sendMessage(from, { react: { text: "😎", key: mek.key } });
-        return await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❌ 𝙵𝙸𝚁𝚂𝚃 𝙼𝙰𝙺𝙴 𝙼𝙴 𝙰𝙳𝙼𝙸𝙽*
-*┃🐢│ 𝙸𝙽 𝚃𝙷𝙸𝚂 𝙶𝚁𝙾𝚄𝙿*
-*╰━━━━━━━━━━━━━━━┈⊷*
+        return await conn.sendMessage(from, {
+            text: `❌ 𝚙𝚕𝚎𝚊𝚜𝚎 𝚖𝚊𝚔𝚎 𝚖𝚎 𝚊𝚍𝚖𝚒𝚗 𝚏𝚒𝚛𝚜𝚝
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
+        });
     }
 
-    // 🧩 Number detection
     let number;
-    if (mek.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-        const quotedMsg = mek.message.extendedTextMessage.contextInfo;
-        if (quotedMsg.participant) {
-            number = quotedMsg.participant.split("@")[0];
-        }
+    if (quoted) {
+        number = quoted.split("@")[0];
     } else if (q && q.includes("@")) {
-        number = q.replace(/[@\s]/g, '');
+        number = q.replace(/[@\s]/g, "");
     } else if (mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
         number = mek.message.extendedTextMessage.contextInfo.mentionedJid[0].split("@")[0];
     }
 
     if (!number) {
-        await conn.sendMessage(from, { react: { text: "🥺", key: mek.key } });
-        return await conn.sendMessage(from, { 
+        return await conn.sendMessage(from, {
             text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❓ 𝚆𝙷𝙸𝙲𝙷 𝙰𝙳𝙼𝙸𝙽 𝙳𝙾 𝚈𝙾𝚄*
-*┃🐢│ 𝚆𝙰𝙽𝚃 𝚃𝙾 𝙳𝙸𝚂𝙼𝙸𝚂𝚂?*
-*┃🐢│ 📝 .𝚍𝚎𝚖𝚘𝚝𝚎 @𝚞𝚜𝚎𝚛*
-*┃🐢│ 💬 𝙾𝚁 𝚁𝙴𝙿𝙻𝚈 𝚃𝙾 𝚃𝙷𝙴𝙸𝚁 𝙼𝙴𝚂𝚂𝙰𝙶𝙴*
+*┃🐢│ • 📝 𝚞𝚜𝚊𝚐𝚎: .𝚍𝚎𝚖𝚘𝚝𝚎 @𝚊𝚍𝚖𝚒𝚗*
+*┃🐢│ • 💬 𝚘𝚛 𝚛𝚎𝚙𝚕𝚢 𝚝𝚘 𝚝𝚑𝚎𝚒𝚛 𝚖𝚎𝚜𝚜𝚊𝚐𝚎*
 *╰━━━━━━━━━━━━━━━┈⊷*
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
-    }
-
-    const botJid = conn.user.id.split(":")[0] + "@s.whatsapp.net";
-    if (number === botJid.split("@")[0]) {
-        await conn.sendMessage(from, { react: { text: "😔", key: mek.key } });
-        return await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❌ 𝚂𝙾𝚁𝚁𝚈, 𝚈𝙾𝚄 𝙲𝙰𝙽'𝚃*
-*┃🐢│ 𝚁𝙴𝙼𝙾𝚅𝙴 𝙼𝙴 𝙵𝚁𝙾𝙼 𝙰𝙳𝙼𝙸𝙽*
-*╰━━━━━━━━━━━━━━━┈⊷*
-> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
-            contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
+        });
     }
 
     const jid = number + "@s.whatsapp.net";
+    const botJidNumber = botJid.split("@")[0];
 
-    try {
-        // 👇 Demote user
-        await conn.groupParticipantsUpdate(from, [jid], "demote");
+    if (number === botJidNumber) {
+        return await conn.sendMessage(from, {
+            text: `❌ 𝚢𝚘𝚞 𝚌𝚊𝚗𝚗𝚘𝚝 𝚍𝚎𝚖𝚘𝚝𝚎 𝚝𝚑𝚎 𝚋𝚘𝚝
 
-        await conn.sendMessage(from, { react: { text: "☹️", key: mek.key } });
-        await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ✅ @${number} 𝙷𝙰𝚂 𝙱𝙴𝙴𝙽*
-*┃🐢│ 𝙳𝙸𝚂𝙼𝙸𝚂𝚂𝙴𝙳 𝙵𝚁𝙾𝙼 𝙰𝙳𝙼𝙸𝙽*
-*╰━━━━━━━━━━━━━━━┈⊷*
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
+> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
+            contextInfo: conn.forwardContext
+        });
+    }
+
+    if (!groupAdmins.includes(jid)) {
+        return await conn.sendMessage(from, {
+            text: `⚠️ @${number} 𝚒𝚜 𝚗𝚘𝚝 𝚊𝚗 𝚊𝚍𝚖𝚒𝚗
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
             contextInfo: conn.forwardContext,
             mentions: [jid]
-        }, { quoted: conn.fkontak });
+        });
+    }
 
-    } catch (error) {
-        console.error("❌ DEMOTE ERROR:", error);
-        await conn.sendMessage(from, { react: { text: "😔", key: mek.key } });
-        await conn.sendMessage(from, { 
-            text: `*╭━━〔 🐢 𝙳𝙴𝙼𝙾𝚃𝙴 🐢 〕━━┈⊷*
-*┃🐢│ ❌ 𝙵𝙰𝙸𝙻𝙴𝙳 𝚃𝙾 𝙳𝙴𝙼𝙾𝚃𝙴*
-*┃🐢│ 🔄 𝙿𝙻𝙴𝙰𝚂𝙴 𝚃𝚁𝚈 𝙰𝙶𝙰𝙸𝙽*
-*╰━━━━━━━━━━━━━━━┈⊷*
+    try {
+        await conn.groupParticipantsUpdate(from, [jid], "demote");
+        await conn.sendMessage(from, {
+            text: `✅ @${number} 𝚑𝚊𝚜 𝚋𝚎𝚎𝚗 𝚍𝚎𝚖𝚘𝚝𝚎𝚍 𝚏𝚛𝚘𝚖 𝚊𝚍𝚖𝚒𝚗
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
 > *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
-            contextInfo: conn.forwardContext
-        }, { quoted: conn.fkontak });
+            contextInfo: conn.forwardContext,
+            mentions: [jid]
+        });
+        await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
+    } catch (error) {
+        console.error("Demote Error:", error);
+        await conn.sendMessage(from, { text: `❌ 𝚏𝚊𝚒𝚕𝚎𝚍 𝚝𝚘 𝚍𝚎𝚖𝚘𝚝𝚎 𝚞𝚜𝚎𝚛` });
     }
 });
