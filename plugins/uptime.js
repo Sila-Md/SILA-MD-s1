@@ -1,7 +1,7 @@
 // plugins/uptime.js
 module.exports = {
     command: 'uptime',
-    alias: [],
+    alias: ['up'],
     react: '⏱️',
     desc: 'Show bot uptime',
     category: 'utility',
@@ -30,13 +30,10 @@ module.exports = {
         
         const msgText = `*╭━━〔 🐢 𝚄𝙿𝚃𝙸𝙼𝙴 🐢 〕━━┈⊷*
 *┃🐢│ • ⏱️ 𝚁𝚄𝙽𝚃𝙸𝙼𝙴: ${uptimeString}*
-*┃🐢│ • 💾 𝙼𝙴𝙼𝙾𝚁𝚈: ${heapUsed}𝙼𝙱 / ${heapTotal}𝙼𝙱*
-*┃🐢│ • 🤖 𝙱𝙾𝚃: 𝚂𝙸𝙻𝙰 𝙼𝙸𝙽𝙸*
 *┃🐢│ • 📱 𝙽𝚄𝙼𝙱𝙴𝚁: +${botNumberFormatted}*
 *┃🐢│ • 🕐 𝚃𝙸𝙼𝙴: ${timeString}*
 *╰━━━━━━━━━━━━━━━┈⊷*
-
-> 🐢 𝙳𝚎𝚟𝚎𝚕𝚘𝚙𝚎𝚍 𝙱𝚢 𝚂𝚒𝚕𝚊`;
+> 𝙳𝚎𝚟𝚎𝚕𝚘𝚙𝚎𝚍 𝙱𝚢 𝚂𝚒𝚕𝚊`;
 
         await socket.sendMessage(from, { react: { text: this.react, key: msg.key } });
         await socket.sendMessage(from, { text: msgText, contextInfo: socket.forwardContext }, { quoted: msg });
