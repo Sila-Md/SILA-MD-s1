@@ -1,0 +1,48 @@
+// silatech/setanticall.js
+cmd({
+    pattern: "setanticall",
+    alias: ["anticall", "blockcalls"],
+    react: "📞",
+    desc: "Enable/disable auto reject calls",
+    category: "admin",
+}, async (conn, mek, args, botNumber) => {
+    const from = mek.key.remoteJid;
+    const fromMe = mek.key.fromMe;
+    const option = args[0]?.toLowerCase();
+
+    if (!fromMe) {
+        return await conn.sendMessage(from, {
+            text: `🔒 owner only command
+
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
+> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
+            contextInfo: conn.forwardContext
+        });
+    }
+
+    if (!option || (option !== 'on' && option !== 'off')) {
+        return await conn.sendMessage(from, {
+            text: `*╭━━〔 🐢 𝚂𝙴𝚃𝙰𝙽𝚃𝙸𝙲𝙰𝙻𝙻 🐢 〕━━┈⊷*
+*┃🐢│ • 📝 𝚞𝚜𝚊𝚐𝚎: .𝚜𝚎𝚝𝚊𝚗𝚝𝚒𝚌𝚊𝚕𝚕 𝚘𝚗/𝚘𝚏𝚏*
+*┃🐢│ • 📝 𝚎𝚡𝚊𝚖𝚙𝚕𝚎: .𝚜𝚎𝚝𝚊𝚗𝚝𝚒𝚌𝚊𝚕𝚕 𝚘𝚗*
+*╰━━━━━━━━━━━━━━━┈⊷*
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
+> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
+            contextInfo: conn.forwardContext
+        });
+    }
+
+    global.botConfig = global.botConfig || {};
+    global.botConfig.ANTI_CALL = option === 'on';
+    
+    await conn.sendMessage(from, {
+        text: `*╭━━〔 🐢 𝚂𝙴𝚃𝙰𝙽𝚃𝙸𝙲𝙰𝙻𝙻 🐢 〕━━┈⊷*
+*┃🐢│ • ✅ 𝚊𝚗𝚝𝚒-𝚌𝚊𝚕𝚕 𝚝𝚞𝚛𝚗𝚎𝚍 ${option === 'on' ? '𝙾𝙽' : '𝙾𝙵𝙵'}*
+*╰━━━━━━━━━━━━━━━┈⊷*
+𝙶𝚎𝚝 𝚢𝚘𝚞𝚛 𝚘𝚠𝚗 𝚋𝚘𝚝 𝚑𝚎𝚛𝚎: https://sila-mini.silatech.site/pair
+> *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚*`,
+        contextInfo: conn.forwardContext
+    });
+    
+    await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
+});
