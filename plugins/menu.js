@@ -1,139 +1,93 @@
-const config = require('../config');
-
+// plugins/menu.js
 module.exports = {
-  command: "menu",
-  description: "To get the menu.",
-  react: "🐢",
-  category: "main",
-  execute: async (socket, msg, args, number) => {
-    try {
-      const from = msg.key.remoteJid;
-      const sender = msg.key.participant || from;
-      const pushname = msg.pushName || "there";
-
-      // New style SILA MD 
-      const menumsg = `
-*╭━━━〔 🐢 𝚂𝙸𝙻𝙰 𝙼𝙳 🐢 〕━━━┈⊷*
-*┃🐢╭──────────────────*
-*┃🐢│ 𝚄𝚂𝙴𝚁 :❯ ${pushname}*
-*┃🐢│ 𝙼𝙾𝙳𝙴 :❯ 𝙿𝚄𝙱𝙻𝙸𝙲*
-*┃🐢│ 𝙿𝚁𝙴𝙵𝙸𝚇 :❯ ${config.PREFIX}*
-*┃🐢│ 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 :❯ 2.0.0*
-*┃🐢╰──────────────────*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*𝙷𝙸 ${pushname} 🥰*
-
-*╭━━〔 🐢 𝙳𝙾𝚆𝙽𝙻𝙾𝙰𝙳 🐢 〕━━┈⊷*
-*┃🐢│ • 𝚂𝙾𝙽𝙶*
-*┃🐢│ • 𝚅𝙸𝙳𝙴𝙾*
-*┃🐢│ • 𝚃𝙸𝙺𝚃𝙾𝙺*
-*┃🐢│ • 𝙵𝙱*
-*┃🐢│ • 𝙰𝙿𝙺*
-*┃🐢│ • 𝙸𝙼𝙶*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝚂𝙴𝙰𝚁𝙲𝙷 🐢 〕━━┈⊷*
-*┃🐢│ • 𝚈𝚃𝚂*
-*┃🐢│ • 𝙻𝚈𝚁𝙸𝙲𝚂*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙼𝙰𝙸𝙽 🐢 〕━━┈⊷*
-*┃🐢│ • 𝙰𝙻𝙸𝚅𝙴*
-*┃🐢│ • 𝙿𝙸𝙽𝙶*
-*┃🐢│ • 𝚄𝙿𝚃𝙸𝙼𝙴*
-*┃🐢│ • 𝚂𝚈𝚂𝚃𝙴𝙼*
-*┃🐢│ • 𝙷𝙴𝙻𝙿*
-*┃🐢│ • 𝙾𝚆𝙽𝙴𝚁*
-*┃🐢│ • 𝙹𝙸𝙳*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝚇𝚃𝚁𝙰 🐢 〕━━┈⊷*
-*┃🐢│ • 𝚅𝚅*
-*┃🐢│ • 𝙳𝙴𝙻𝙴𝚃𝙴*
-*┃🐢│ • 𝙶𝙸𝚁𝙻*
-*┃🐢│ • 𝙶𝙸𝚁𝙻2*
-*┃🐢│ • 𝚇𝚅𝙸𝙳𝙴𝙾*
-*┃🐢│ • 𝚇𝙽𝚇𝚇*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙶𝚁𝙾𝚄𝙿 🐢 〕━━┈⊷*
-*┃🐢│ • 𝙷𝙸𝙳𝙴𝚃𝙰𝙶*
-*┃🐢│ • 𝙳𝙴𝙻𝙴𝚃𝙴*
-*┃🐢│ • 𝙼𝚄𝚃𝙴*
-*┃🐢│ • 𝚄𝙽𝙼𝚄𝚃𝙴*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙰𝙸 🐢 〕━━┈⊷*
-*┃🐢│ • 𝙰𝙸*
-*┃🐢│ • 𝙶𝙿𝚃*
-*┃🐢│ • 𝙵𝙻𝚄𝚇𝟸*
-*┃🐢│ • 𝙸𝙼𝙰𝙶𝙸𝙽𝙴*
-*┃🐢│ • 𝚂𝙾𝚁𝙰*
-*┃🐢│ • 𝙶𝙴𝙼𝙸𝙽𝙸*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙲𝙾𝙽𝚅𝙴𝚁𝚃 🐢 〕━━┈⊷*
-*┃🐢│ • 𝚃𝚃𝚂*
-*┃🐢│ • 𝚃𝙴𝚇𝚃𝙼𝙰𝙺𝙴𝚁*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝚄𝚂𝙴𝚁 🐢 〕━━┈⊷*
-*┃🐢│ • 𝙱𝙻𝙾𝙲𝙺*
-*┃🐢│ • 𝚄𝙽𝙱𝙻𝙾𝙲𝙺*
-*┃🐢│ • 𝙰𝚄𝚃𝙾𝙱𝙸𝙾*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙽𝙴𝚆 𝙲𝙾𝙼𝙼𝙰𝙽𝙳𝚂 🐢 〕━━┈⊷*
-*┃🐢│ • 𝙵𝙻𝚄𝚇𝟸*
-*┃🐢│ • 𝚂𝙸𝙻𝙰*
-*┃🐢│ • 𝙰𝙿𝙺𝟸*
-*┃🐢│ • 𝙿𝙻𝙰𝚈*
-*┃🐢│ • 𝙼𝙿𝟺*
-*┃🐢│ • 𝙶𝙿𝚃*
-*┃🐢│ • 𝚂𝙾𝚁𝙰*
-*┃🐢│ • 𝙶𝙴𝙼𝙸𝙽𝙸*
-*┃🐢│ • 𝚃𝙴𝚇𝚃𝙼𝙰𝙺𝙴𝚁*
-*┃🐢│ • 𝙽𝙴𝚆*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*╭━━〔 🐢 𝙽𝙴𝚆 𝙵𝙴𝙰𝚃𝚄𝚁𝙴𝚂 🐢 〕━━┈⊷*
-*┃🐢│ • 𝚆𝙴𝙰𝚃𝙷𝙴𝚁*
-*┃🐢│ • 𝚀𝚄𝙾𝚃𝙴*
-*┃🐢│ • 𝙹𝙾𝙺𝙴*
-*┃🐢│ • 𝙲𝚁𝚈𝙿𝚃𝙾*
-*┃🐢│ • 𝙽𝙴𝚆𝚂*
-*┃🐢│ • 𝙵𝙰𝙲𝚃*
-*┃🐢│ • 𝙰𝙳𝚅𝙸𝙲𝙴*
-*┃🐢│ • 𝙼𝙴𝙼𝙴*
-*┃🐢│ • 𝚁𝙸𝙳𝙳𝙻𝙴*
-*┃🐢│ • 𝚃𝚁𝙸𝚅𝙸𝙰*
-*╰━━━━━━━━━━━━━━━┈⊷*
-
-*𝙿𝙾𝚆𝙴𝚁𝙴𝙳 𝙱𝚈 𝚂𝙸𝙻𝙰 𝙼𝙳*
-`;
-
-      // Send menu with image and styled contextInfo
-      await socket.sendMessage(sender, {
-        image: { url: 'https://files.catbox.moe/jwmx1j.jpg' },
-        caption: menumsg,
-        contextInfo: {
-          mentionedJid: [sender],
-          forwardingScore: 999,
-          isForwarded: true,
-          forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363402325089913@newsletter',
-            newsletterName: '𝐒𝐈𝐋𝐀 𝐓𝐄𝐂𝐇',
-            serverMessageId: 143
-          }
+    command: 'menu',
+    alias: ['help', 'commands', 'cmds', 'all'],
+    react: '📋',
+    desc: 'Show bot menu',
+    category: 'utility',
+    async execute(socket, msg, args, botNumber) {
+        const from = msg.key.remoteJid;
+        
+        const defaultConfig = {
+            PREFIX: '.',
+            RCD_IMAGE_PATH: 'https://i.ibb.co/4RM2GC9F/Sila-mini.jpg'
+        };
+        
+        // Get sender name (mtu aliepiga command)
+        let senderName = 'User';
+        if (msg.pushName) {
+            senderName = msg.pushName;
+        } else if (msg.key?.participant) {
+            senderName = msg.key.participant.split('@')[0];
+        } else if (msg.key?.remoteJid) {
+            senderName = msg.key.remoteJid.split('@')[0];
         }
-      }, { quoted: msg });
+        
+        // Get all available commands from plugins with categories
+        const commandsByCategory = new Map();
+        
+        for (const [cmd, plugin] of global.plugins || socket.plugins || new Map()) {
+            if (plugin.command && !plugin.hidden) {
+                const category = plugin.category || 'general';
+                if (!commandsByCategory.has(category)) {
+                    commandsByCategory.set(category, []);
+                }
+                commandsByCategory.get(category).push(cmd);
+            }
+        }
+        
+        // Sort categories alphabetically
+        const sortedCategories = Array.from(commandsByCategory.keys()).sort();
+        
+        // Sort commands in each category
+        for (const [category, cmds] of commandsByCategory) {
+            cmds.sort();
+        }
+        
+        // Get active sessions count
+        let activeSessionsCount = 0;
+        if (global.activeSockets) {
+            activeSessionsCount = global.activeSockets.size;
+        } else if (socket.activeSockets) {
+            activeSessionsCount = socket.activeSockets.size;
+        }
+        
+        // Count total commands
+        let totalCommands = 0;
+        for (const cmds of commandsByCategory.values()) {
+            totalCommands += cmds.length;
+        }
+        
+        // Build menu message
+        let menuText = `*╭━━〔 🐢 𝚂𝙸𝙻𝙰 𝙼𝙴𝙽𝚄 🐢 〕━━┈⊷*
+*┃🐢│ 👤 𝚄𝚂𝙴𝚁: ${senderName}*
+*┃🐢│ 🔧 𝙿𝚁𝙴𝙵𝙸𝚇: ${defaultConfig.PREFIX}*
+*┃🐢│ 📊 𝚃𝙾𝚃𝙰𝙻: ${totalCommands} 𝙲𝙼𝙳𝚂*
+*┃🐢│ 👥 𝙰𝙲𝚃𝙸𝚅𝙴: ${activeSessionsCount}*
+*╰━━━━━━━━━━━━━━━┈⊷*
 
-    } catch (e) {
-      console.error(e);
-      await socket.sendMessage(msg.key.remoteJid, { 
-        text: `❌ 𝙴𝚁𝚁𝙾𝚁: ${e.message}` 
-      }, { quoted: msg });
+`;
+        
+        // Add each category with commands (each command has 🐢 like ping)
+        for (const category of sortedCategories) {
+            const cmds = commandsByCategory.get(category);
+            // Category name in bold dark text (no emoji)
+            menuText += `*${category.toUpperCase()}*\n`;
+            menuText += `┌─────────────────────┈⊷\n`;
+            for (const cmd of cmds) {
+                menuText += `┃🐢│ ${defaultConfig.PREFIX}${cmd}\n`;
+            }
+            menuText += `└─────────────────────┈⊷\n\n`;
+        }
+        
+        menuText += `> 🐢 𝙳𝚎𝚟𝚎𝚕𝚘𝚙𝚎𝚍 𝙱𝚢 𝚂𝚒𝚕𝚊`;
+        
+        // Send with fake vCard and context info
+        await socket.sendMessage(from, { react: { text: this.react, key: msg.key } });
+        await socket.sendMessage(from, { 
+            image: { url: defaultConfig.RCD_IMAGE_PATH },
+            caption: menuText,
+            contextInfo: socket.forwardContext
+        }, { quoted: socket.fkontak });
     }
-  }
 };
